@@ -16,7 +16,7 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | M1        | Pure pedagogical core                                     | done                                |
 | M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
 | M3        | Ingestion (unpdf, docling), analysis, guide drafting      | done (verified with Claude)         |
-| M4        | Eval harness, benchmark, load test (decision gate)        | in progress (gate: provider ADR)    |
+| M4        | Eval harness, benchmark, load test (decision gate)        | harness done; provider ADR proposed |
 | M5–M10    | Data layer, UI, admin, launch                             | planned                             |
 
 ## Layout

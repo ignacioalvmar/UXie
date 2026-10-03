@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { styleText } from "node:util";
 import { parse as parseYaml } from "yaml";
@@ -16,11 +16,13 @@ import {
   parseProviderSpecs,
   PROFILES,
   renderScorecard,
+  rescoreReport,
   runEval,
   settingsForSpec,
   specFromSettings,
   UsageLog,
   type EvalCandidate,
+  type EvalReport,
   type ProviderSpec,
 } from "@uxie/eval";
 import { createGateway } from "@uxie/llm";
@@ -36,6 +38,7 @@ export interface EvalCliOptions {
   parallel: string;
   out?: string;
   judge: boolean;
+  rescore?: string;
 }
 
 const dim = (s: string) => styleText("dim", s);
@@ -73,6 +76,7 @@ export function resultPaths(outDir: string | undefined, name: string, date = new
 
 /** `pnpm uxie eval <fixture>`: simulated students → scorecard (PRD §13, §16 M4). */
 export async function evalCommand(target: string, opts: EvalCliOptions): Promise<void> {
+  if (opts.rescore) return rescoreCommand(target, opts.rescore);
   const env = parseEnv(BaseEnvSchema, process.env);
   const base = llmSettingsFromEnv(env);
   const specs: ProviderSpec[] = parseProviderSpecs(opts.providers);
@@ -164,4 +168,27 @@ export async function evalCommand(target: string, opts: EvalCliOptions): Promise
     }
   }
   console.log(`\nScorecard: ${paths.md}\nDetails:   ${paths.json}`);
+}
+
+/** `--rescore <report.json>`: recompute checks, pass/fail and thresholds with no model calls. */
+function rescoreCommand(target: string, file: string) {
+  const path = userPath(file);
+  const report = JSON.parse(readFileSync(path, "utf8")) as EvalReport;
+  const main = loadFixture(target);
+  const fixtures: Record<string, FixturePaper> = { [main.slug]: main.fixture };
+  for (const slug of new Set(report.runs.map((r) => r.fixture))) {
+    if (!fixtures[slug]) fixtures[slug] = loadFixture(slug).fixture;
+  }
+  const next = rescoreReport(report, { fixtures, prompts: loadPromptDir(promptsDir) });
+  const base = path.replace(/\.json$/, "");
+  writeFileSync(`${base}.rescored.md`, renderScorecard(next));
+  writeFileSync(`${base}.rescored.json`, `${JSON.stringify(next, null, 2)}\n`);
+  for (const p of next.providers) {
+    console.log(`${p.label}: ${p.passedRuns}/${p.runs} runs passed`);
+    for (const t of p.thresholds) {
+      const mark = t.status === "pass" ? green("✓") : t.status === "fail" ? red("✗") : dim("–");
+      console.log(`  ${mark} ${t.label}: ${t.display} ${dim(`(${t.basis})`)}`);
+    }
+  }
+  console.log(`\nScorecard: ${base}.rescored.md`);
 }

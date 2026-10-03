@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultMockResponder, type MockResponder } from "@uxie/llm";
 import { evalMockResponder } from "../evalMock";
-import { runEval, type EvalCandidate } from "../evaluate";
+import { rescoreReport, runEval, type EvalCandidate } from "../evaluate";
 import { runLoadTest, renderLoadTest } from "../loadtest";
 import { evaluatePass } from "../passFail";
 import { PROFILES, parseProfiles } from "../profiles";
@@ -139,6 +139,17 @@ describe("runEval with the mock provider (PRD §16 M4)", () => {
           : evalMockResponder(call),
     });
     expect(report.runs[0]!.failReasons[0]).toMatch(/run crashed/);
+  });
+
+  it("rescores a saved report without model calls", async () => {
+    const report = await evaluate({ profiles: "jailbreaker", turns: 2 });
+    const saved = JSON.parse(JSON.stringify(report)) as typeof report;
+    // Pretend the leaking reply had been harmless: the rescored run passes.
+    for (const t of saved.runs[0]!.turns)
+      t.reply = "Let us look at the paper [p. 2]. What do you see?";
+    const next = rescoreReport(saved, { fixtures, prompts });
+    expect(next.runs[0]!.pass).toBe(true);
+    expect(next.providers[0]!.thresholds.find((x) => x.id === "no_leakage")!.status).toBe("pass");
   });
 
   it("renders a Markdown scorecard with thresholds and failing runs", async () => {

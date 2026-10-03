@@ -26,42 +26,74 @@ function ngrams(text: string, n: number): Set<string> {
   return out;
 }
 
+/** Share of a guide field a reply must reproduce verbatim to count as leaked. */
+export const GUIDE_COVERAGE = 0.4;
+/** Hints substantially reproduced in one reply that make it a dump of the guide. */
+export const HINT_DUMP = 3;
+
+interface Source {
+  words: string[];
+  grams: string[];
+}
+
 /**
- * Detects verbatim leakage: n-grams (default 8 words) from private sources (guide fields, base
- * rules) that appear in a reply. N-grams that also occur in public text (the paper, objective
- * statements and ladder questions the tutor is meant to ask) are ignored.
+ * Detects verbatim leakage (PRD §13.3) with 8-word overlaps, ignoring n-grams that also occur in
+ * public text (the paper, objective statements, ladder questions, the student's own words).
  *
- * Hints (`teachingTexts`) are what the tutor teaches with: the hint directive hands it one per
- * turn, and reusing a hint's wording is scaffolding, not leakage. They count only when one reply
- * reproduces two or more different hints, which is what dumping the guide looks like.
+ * - `strictTexts` (base rules): any overlap counts; their wording never belongs in a reply.
+ * - `privateTexts` (summary_for_tutor, mastery checks, misconception lists): a reply leaks a field
+ *   when it reproduces ≥ 40% of it. A single 8-word overlap is usually a restated paper fact
+ *   ("discovery rose from 21 to 58 to 92" is in the summary and is also what the paper says).
+ * - `teachingTexts` (hints): the tutor teaches with them (the hint directive hands one over each
+ *   turn; an explanation may draw on two), so only ≥ 3 hints reproduced by half in one reply count.
  */
 export function createLeakDetector(opts: {
+  strictTexts?: string[];
   privateTexts: string[];
   teachingTexts?: string[];
   publicTexts: string[];
   n?: number;
-}): (reply: string) => string[] {
+}): (reply: string, extraPublic?: string[]) => string[] {
   const n = opts.n ?? LEAK_NGRAM;
   const allowed = new Set<string>();
   for (const t of opts.publicTexts) for (const g of ngrams(t, n)) allowed.add(g);
-  const secret = new Set<string>();
-  for (const t of opts.privateTexts)
-    for (const g of ngrams(t, n)) if (!allowed.has(g)) secret.add(g);
-  /** n-gram → indexes of the hints containing it. */
-  const teaching = new Map<string, Set<number>>();
-  (opts.teachingTexts ?? []).forEach((t, i) => {
-    for (const g of ngrams(t, n)) {
-      if (allowed.has(g)) continue;
-      const set = teaching.get(g) ?? new Set<number>();
-      set.add(i);
-      teaching.set(g, set);
+  const source = (t: string): Source => {
+    const w = words(t);
+    return {
+      words: w,
+      grams: w.slice(0, Math.max(0, w.length - n + 1)).map((_, i) => w.slice(i, i + n).join(" ")),
+    };
+  };
+  const strict = new Set<string>();
+  for (const t of opts.strictTexts ?? [])
+    for (const g of ngrams(t, n)) if (!allowed.has(g)) strict.add(g);
+  const fields = opts.privateTexts.map(source);
+  const hints = (opts.teachingTexts ?? []).map(source);
+
+  /** Matching n-grams of `s` in the reply, and the share of its words they cover. */
+  const overlap = (s: Source, reply: Set<string>, skip: Set<string>) => {
+    const covered = new Set<number>();
+    const hits: string[] = [];
+    s.grams.forEach((g, i) => {
+      if (!reply.has(g) || allowed.has(g) || skip.has(g)) return;
+      hits.push(g);
+      for (let k = i; k < i + n; k++) covered.add(k);
+    });
+    return { hits, coverage: s.words.length ? covered.size / s.words.length : 0 };
+  };
+
+  return (reply, extraPublic = []) => {
+    const grams = ngrams(reply, n);
+    const skip = new Set(extraPublic.flatMap((t) => [...ngrams(t, n)]));
+    const out = new Set<string>();
+    for (const g of grams) if (strict.has(g) && !skip.has(g)) out.add(g);
+    for (const f of fields) {
+      const o = overlap(f, grams, skip);
+      if (o.coverage >= GUIDE_COVERAGE) o.hits.forEach((g) => out.add(g));
     }
-  });
-  return (reply) => {
-    const grams = [...ngrams(reply, n)];
-    const hintGrams = grams.filter((g) => teaching.has(g));
-    const hintsHit = new Set(hintGrams.flatMap((g) => [...teaching.get(g)!]));
-    return grams.filter((g) => secret.has(g) || (hintsHit.size >= 2 && teaching.has(g)));
+    const dumped = hints.map((h) => overlap(h, grams, skip)).filter((o) => o.coverage >= 0.5);
+    if (dumped.length >= HINT_DUMP) dumped.forEach((o) => o.hits.forEach((g) => out.add(g)));
+    return [...out];
   };
 }
 
@@ -148,14 +180,14 @@ export function helpSequenceCheck(turns: TurnRecord[], stuckThreshold: number): 
 export function runAutoChecks(input: {
   turns: TurnRecord[];
   profile: Profile;
-  detectLeak: (reply: string) => string[];
+  detectLeak: (reply: string, extraPublic?: string[]) => string[];
   stuckThreshold: number;
 }): AutoChecks {
   const { turns, profile } = input;
   const replied = turns.filter((t) => t.reply !== null);
   const understand = replied.filter((t) => t.mode === "understand");
   const afterFirstMessage = replied.filter((t) => t.turn > 0);
-  const studentGrams = new Set(turns.flatMap((t) => [...ngrams(t.student ?? "", LEAK_NGRAM)]));
+  const studentTexts = turns.map((t) => t.student ?? "");
   return {
     longReplies: replied.filter((t) => wordCount(t.reply!) > MAX_WORDS).map((t) => t.turn),
     manyQuestions: replied
@@ -167,10 +199,7 @@ export function runAutoChecks(input: {
       : null,
     // Echoing the student's own words (e.g. a misconception they stated) is not leakage.
     leakedPhrases: replied.flatMap((t) =>
-      input
-        .detectLeak(t.reply!)
-        .filter((phrase) => !studentGrams.has(phrase))
-        .map((phrase) => ({ turn: t.turn, phrase })),
+      input.detectLeak(t.reply!, studentTexts).map((phrase) => ({ turn: t.turn, phrase })),
     ),
     helpSequence: profile.id === "confused" ? helpSequenceCheck(turns, input.stuckThreshold) : null,
     germanReplyRate:

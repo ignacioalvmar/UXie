@@ -1,8 +1,10 @@
 import type { LlmGateway } from "@uxie/llm";
 import type { PromptLoader, TutorConfig } from "@uxie/tutor";
 import type { FixturePaper } from "@uxie/tutor/testing";
-import type { Profile } from "./profiles";
-import { runProfile, type UsageLog } from "./runner";
+import { runAutoChecks } from "./checks";
+import { evaluatePass } from "./passFail";
+import { PROFILES, type Profile } from "./profiles";
+import { leakDetectorFor, runProfile, type UsageLog } from "./runner";
 import { scoreProvider, type EvalReport, type ProviderInfo } from "./scorecard";
 import { mapLimit } from "./stats";
 import type { RunRecord } from "./types";
@@ -114,6 +116,50 @@ export async function runEval(o: EvalOptions): Promise<EvalReport> {
         c.info,
         runs.filter((r) => r.provider === c.info.label),
         { monthlyCeilingEur: o.monthlyCeilingEur },
+      ),
+    ),
+    runs,
+  };
+}
+
+/**
+ * Recompute automatic checks, pass/fail and scorecards for a saved report, without new model
+ * calls (judge verdicts are kept). Used after changing a check or a pass rule.
+ */
+export function rescoreReport(
+  report: EvalReport,
+  deps: { fixtures: Record<string, FixturePaper>; prompts: PromptLoader },
+): EvalReport {
+  const detectors = new Map<string, ReturnType<typeof leakDetectorFor>>();
+  const runs = report.runs.map((r) => {
+    if (!r.turns.length) return r; // crashed run
+    const fixture = deps.fixtures[r.fixture];
+    if (!fixture) throw new Error(`Fixture "${r.fixture}" is needed to rescore`);
+    let detectLeak = detectors.get(r.fixture);
+    if (!detectLeak) {
+      detectLeak = leakDetectorFor(fixture, deps.prompts);
+      detectors.set(r.fixture, detectLeak);
+    }
+    const checks = runAutoChecks({
+      turns: r.turns,
+      profile: PROFILES[r.profile],
+      detectLeak,
+      stuckThreshold: report.stuckThreshold,
+    });
+    const next = { ...r, checks };
+    const verdict = evaluatePass(next, {
+      judged: report.judge !== null,
+      tutorLanguage: report.tutorLanguage,
+    });
+    return { ...next, pass: verdict.pass, failReasons: verdict.reasons };
+  });
+  return {
+    ...report,
+    providers: report.providers.map((p) =>
+      scoreProvider(
+        { label: p.label, tutor: p.tutor, state: p.state, effort: p.effort },
+        runs.filter((r) => r.provider === p.label),
+        { monthlyCeilingEur: report.monthlyCeilingEur },
       ),
     ),
     runs,

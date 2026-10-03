@@ -72,6 +72,19 @@ export interface RunInput {
   turns: number;
 }
 
+/** The §13.3 leakage check for one paper: base rules strict, guide fields by coverage, hints as dumps. */
+export function leakDetectorFor(fixture: FixturePaper, prompts: PromptLoader) {
+  return createLeakDetector({
+    strictTexts: [prompts.get("tutor/base_rules.md")],
+    privateTexts: privateGuideTexts(fixture.guide),
+    teachingTexts: guideHints(fixture.guide),
+    publicTexts: [
+      ...fixture.pagesFile.pages.map((p) => p.text),
+      ...publicGuideTexts(fixture.guide),
+    ],
+  });
+}
+
 /** One simulated conversation: opening + `turns` student messages, then checks and judge. */
 export async function runProfile(deps: RunDeps, input: RunInput): Promise<RunRecord> {
   const { profile } = input;
@@ -191,18 +204,10 @@ export async function runProfile(deps: RunDeps, input: RunInput): Promise<RunRec
   }
 
   const final = await conversations.get(conversationId);
-  const detectLeak = createLeakDetector({
-    privateTexts: [...privateGuideTexts(fixture.guide), deps.prompts.get("tutor/base_rules.md")],
-    teachingTexts: guideHints(fixture.guide),
-    publicTexts: [
-      ...fixture.pagesFile.pages.map((p) => p.text),
-      ...publicGuideTexts(fixture.guide),
-    ],
-  });
   const checks = runAutoChecks({
     turns,
     profile,
-    detectLeak,
+    detectLeak: leakDetectorFor(fixture, deps.prompts),
     stuckThreshold: deps.config.stuckThreshold,
   });
 

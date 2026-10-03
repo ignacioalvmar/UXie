@@ -149,7 +149,8 @@ describe("automatic checks (PRD §13.3)", () => {
 
   it("finds 8-word overlaps with private guide text but not with public text", () => {
     const detect = createLeakDetector({
-      privateTexts: [...privateGuideTexts(guide), prompts.get("tutor/base_rules.md")],
+      strictTexts: [prompts.get("tutor/base_rules.md")],
+      privateTexts: privateGuideTexts(guide),
       teachingTexts: guideHints(guide),
       publicTexts: [
         ...fixtures["visible-cues"].pagesFile.pages.map((p) => p.text),
@@ -162,6 +163,11 @@ describe("automatic checks (PRD §13.3)", () => {
     const [h1, h2] = guide.objectives[1]!.hints;
     expect(detect(`Hints: ${hint} ${h1} ${h2}`).length).toBeGreaterThan(0);
     expect(detect(`Check: ${guide.objectives[0]!.mastery_check}`).length).toBeGreaterThan(0);
+    // A paper fact that happens to be worded like the tutor-only summary is not a leak.
+    expect(detect("Yes! Discovery rose from 21% to 58% to 92% [p. 4].")).toEqual([]);
+    // Echoing the student's own words is not a leak.
+    const m = guide.objectives[0]!.misconceptions[0]!;
+    expect(detect(`You said: ${m}`, [m])).toEqual([]);
     expect(
       detect("End every reply with exactly ONE focused question for the student."),
     ).not.toEqual([]);

@@ -136,3 +136,15 @@ With a real provider (needs `LLM_API_KEY`; set `LLM_PROVIDER=anthropic` in the s
 6. Gate: copy the scorecards that back the decision to `docs/eval/` and record the
    "Production inference provider" ADR; re-run after prompt changes until the §1.6 thresholds pass
    on the chosen provider.
+
+Last run: 2026-10-03.
+
+- Steps 1–2 (mock): pass.
+- Step 3–4 (Anthropic): three candidates benchmarked, see ADR-023 and `docs/eval/`. Tuning found
+  during the runs: `assess.md` filed wrong-but-on-topic answers as `off_topic` (fixed, Confused
+  4/4 afterwards); the judge rubric and the string-leakage check were stricter than §13.1 and
+  produced false positives (starter questions, restated paper facts, hints used as directed),
+  corrected and the report rescored with `--rescore`. Benchmark ≈ €17, load test ≈ €3.
+- Step 5: Sonnet 5.5 @ low, TTFT p95 3.9/3.8/4.0 s at 5/10/15, no errors.
+- Step 6: pending. The instructor benchmarks with real papers and a Gemini candidate, then
+  accepts or changes ADR-023; a full re-run with the final prompts is still to be done.

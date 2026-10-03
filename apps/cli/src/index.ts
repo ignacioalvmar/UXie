@@ -114,6 +114,7 @@ program
   .option("--parallel <n>", "conversations in flight at once", "3")
   .option("--out <dir>", "output folder (default: eval-results/<date>)")
   .option("--no-judge", "skip the LLM judge (automatic checks only)")
+  .option("--rescore <json>", "recompute checks and thresholds of a saved report (no model calls)")
   .description("Run simulated students and write a scorecard (PRD §13)")
   .action(run(evalCommand));
 
