@@ -26,3 +26,54 @@ Automated: `pnpm check` (coverage gate ≥ 95% lines on `core/state` and `core/c
    `objectives[n].refs[m].page: page 99 does not exist (paper has 7 pages)`. Revert.
 
 Last run: 2026-10-03.
+
+## M2: LLM gateway, tutor engine, CLI chat
+
+Automated: `pnpm check` (gateway wire format against a fake Anthropic API, engine integration
+tests on the mock provider, golden prompt snapshots in `packages/tutor/src/__tests__/__snapshots__/prompts/`).
+
+1. Offline: `pnpm uxie chat visible-cues --provider mock --debug`. Type an answer, `/stuck` twice,
+   `/mode apply`, `/progress`, `/quit`. Expect help levels ask → hint 1 → hint 2 → explain, the mode
+   handover, and `cached` > 0 on tutor calls from turn 2.
+2. Anthropic (real provider): in `.env` set `LLM_PROVIDER=anthropic`, `LLM_API_KEY=…`,
+   `LLM_TUTOR_MODEL=claude-sonnet-5-5`, `LLM_STATE_MODEL=claude-haiku-4-5`. Run
+   `pnpm uxie doctor --ping`, then `pnpm uxie chat visible-cues --debug` for ~6 turns
+   (one wrong answer, one `/stuck`, one good answer). Check:
+   - replies are short, cite pages like `[p. 2]`, end with one question, and follow the help level;
+   - the `assessment` line shows sensible intent/quality and the state diff matches;
+   - `tutor … cached N` with N > 0 from the second tutor turn on (M2 acceptance);
+   - session cost stays in the cents.
+3. Provider switch: run the same chat with only env changed to
+   `LLM_PROVIDER=openai_compatible LLM_BASE_URL=http://localhost:11434/v1 LLM_TUTOR_MODEL=<model>`
+   (needs a GPU-backed Ollama with a context ≥ 8k; CPU-only machines time out).
+
+Last run: 2026-10-03.
+
+- Step 1 (mock): pass.
+- Step 2 (Anthropic, Sonnet 5.5 tutor + Haiku 4.5 state): pass. Coherent Socratic dialogue with
+  valid page citations and one question per reply; misconception recorded and later resolved;
+  shortcut declined with a smaller step; Apply-mode handover. Stable prefix 5,696 tokens written
+  on turn 1 and read from turn 2 on. €0.016 for the opening, €0.004–0.006 per later tutor turn,
+  €0.002 per assessment; 6-turn session €0.049. Found and fixed: on "Explain it to me" at hint
+  level, the event note overrode the HINT directive (tutor/events/stuck.md tightened, re-tested).
+  Noted for M4 tuning: Haiku kept U1 at in_progress although the restatement arguably met the
+  mastery check; assessment calls are not cached (prefix below Haiku's 4,096-token minimum).
+- Step 3 (Ollama): CPU-only machine with a 4k context timed out, exercising the timeout path.
+
+### M2 addendum: OpenAI and Gemini (ADR-020)
+
+Automated: request bodies for OpenAI (`store: false`, `prompt_cache_key`, no temperature on
+reasoning models, `reasoning.effort`) and Gemini (`systemInstruction`, `thinkingLevel`,
+JSON output, cache reads) against fake APIs; mixed-provider routing; settings redaction and
+update semantics; key encryption round-trip and tamper detection.
+
+With real keys:
+
+1. OpenAI only: `LLM_PROVIDER=openai LLM_API_KEY=sk-… LLM_TUTOR_MODEL=gpt-5.5 LLM_STATE_MODEL=gpt-5.4-mini`
+   → `pnpm uxie doctor --ping` (both roles answer), then `pnpm uxie chat visible-cues --debug`;
+   `cached` > 0 from turn 2 once the prefix exceeds 1024 tokens.
+2. Gemini only: `LLM_PROVIDER=google LLM_API_KEY=… LLM_TUTOR_MODEL=gemini-3.8-flash LLM_STATE_MODEL=gemini-3.5-flash-lite`.
+3. Mixed: `LLM_PROVIDER=anthropic LLM_API_KEY=sk-ant-… LLM_STATE_PROVIDER=google GEMINI_API_KEY=…
+LLM_STATE_MODEL=gemini-3.5-flash-lite` → the debug lines show `tutor … anthropic` and
+   `assessment … google`.
+   Set `LLM_PRICES_JSON` entries for OpenAI/Gemini models, or costs show €0.

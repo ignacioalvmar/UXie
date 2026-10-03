@@ -1,12 +1,32 @@
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { Command } from "commander";
-import { BaseEnvSchema, EnvError, describeEnv, parseEnv } from "@uxie/core";
+import { EnvError } from "@uxie/core";
+import { TutorError } from "@uxie/tutor";
+import { chatCommand } from "./commands/chat";
+import { doctorCommand } from "./commands/doctor";
+import { repoRoot } from "./paths";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const envFile = resolve(repoRoot, ".env");
 if (existsSync(envFile)) process.loadEnvFile(envFile);
+
+/** Print expected failures (bad config, missing fixture) without a stack trace. */
+const run =
+  <A extends unknown[]>(fn: (...args: A) => Promise<void>) =>
+  async (...args: A) => {
+    try {
+      await fn(...args);
+    } catch (e) {
+      if (
+        e instanceof EnvError ||
+        e instanceof TutorError ||
+        (e instanceof Error && !process.env.DEBUG)
+      ) {
+        console.error(e.message);
+        process.exitCode = 1;
+      } else throw e;
+    }
+  };
 
 /** Placeholder action for commands that land in a later milestone (PRD §16). */
 const later = (milestone: string) => () => {
@@ -65,7 +85,7 @@ program
   .option("--provider <p>", "override LLM_PROVIDER")
   .option("--debug", "print assessment, state diff and tokens")
   .description("Chat with the real tutor engine in the terminal")
-  .action(later("M2"));
+  .action(run(chatCommand));
 
 program
   .command("eval")
@@ -119,19 +139,8 @@ program
 
 program
   .command("doctor")
+  .option("--ping", "send one tiny request to the configured provider")
   .description("Validate env, database, provider, prompts and storage")
-  .action(() => {
-    try {
-      const env = parseEnv(BaseEnvSchema, process.env);
-      console.log("env      ok", describeEnv(env));
-      console.log("database (checked from M5)");
-      console.log("provider (checked from M2)");
-    } catch (e) {
-      if (e instanceof EnvError) {
-        console.error(e.message);
-        process.exitCode = 1;
-      } else throw e;
-    }
-  });
+  .action(run(doctorCommand));
 
 await program.parseAsync();

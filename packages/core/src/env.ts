@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  LlmProvider,
+  LlmSettingsSchema,
+  PriceSchema,
+  describeLlmSettings,
+  llmSettingsProblems,
+  type LlmSettings,
+  type ProviderCredential,
+} from "./llmSettings";
 
 /**
  * Environment schema (PRD §7). Pure: callers pass `process.env` (or any record) in.
@@ -18,15 +27,6 @@ const csv = z.string().transform((s) =>
     .filter(Boolean),
 );
 
-export const PriceSchema = z.object({
-  in: z.number().nonnegative(),
-  cached: z.number().nonnegative(),
-  write5m: z.number().nonnegative(),
-  write1h: z.number().nonnegative(),
-  out: z.number().nonnegative(),
-});
-export type Price = z.infer<typeof PriceSchema>;
-
 const pricesJson = z.string().transform((s, ctx) => {
   try {
     return z.record(z.string(), PriceSchema).parse(JSON.parse(s));
@@ -38,9 +38,6 @@ const pricesJson = z.string().transform((s, ctx) => {
     return z.NEVER;
   }
 });
-
-export const LlmProvider = z.enum(["anthropic", "openai_compatible", "google", "mock"]);
-export type LlmProvider = z.infer<typeof LlmProvider>;
 
 /** Variables shared by every process (web, worker, CLI, eval). */
 export const BaseEnvSchema = z.object({
@@ -54,9 +51,25 @@ export const BaseEnvSchema = z.object({
   RESEARCH_CONSENT_VERSION: withDefault(z.string(), "2026-10-01"),
 
   // LLM provider
+  // Env is the bootstrap/development source of LlmSettings; the instructor's settings page
+  // (stored encrypted in the database) overrides it once configured (FR-9.6).
   LLM_PROVIDER: withDefault(LlmProvider, "anthropic"),
+  LLM_STATE_PROVIDER: opt(LlmProvider),
+  LLM_JUDGE_PROVIDER: opt(LlmProvider),
   LLM_BASE_URL: opt(z.url()),
   LLM_API_KEY: opt(z.string()),
+  ANTHROPIC_API_KEY: opt(z.string()),
+  ANTHROPIC_WORKSPACE_ID: opt(z.string()),
+  OPENAI_API_KEY: opt(z.string()),
+  GEMINI_API_KEY: opt(z.string()),
+  SETTINGS_ENCRYPTION_KEY: opt(
+    z
+      .string()
+      .refine(
+        (k) => /^[A-Za-z0-9+/]{43}=$/.test(k),
+        "must be 32 bytes, base64 (openssl rand -base64 32)",
+      ),
+  ),
   LLM_TUTOR_MODEL: withDefault(z.string(), "claude-sonnet-5-5"),
   LLM_STATE_MODEL: opt(z.string()),
   LLM_JUDGE_MODEL: opt(z.string()),
@@ -129,12 +142,8 @@ export function envProblems(env: BaseEnv): string[] {
   if (prod && env.LLM_PROVIDER === "mock") {
     problems.push("LLM_PROVIDER: mock is for tests and development only");
   }
-  if ((env.LLM_PROVIDER === "anthropic" || env.LLM_PROVIDER === "google") && !env.LLM_API_KEY) {
-    problems.push(`LLM_API_KEY: required for LLM_PROVIDER=${env.LLM_PROVIDER}`);
-  }
-  if (env.LLM_PROVIDER === "openai_compatible" && !env.LLM_BASE_URL) {
-    problems.push("LLM_BASE_URL: required for LLM_PROVIDER=openai_compatible");
-  }
+  for (const p of llmSettingsProblems(llmSettingsFromEnv(env)))
+    problems.push(`${p} (${ENV_KEY_HINT})`);
   if (env.EXTRACTOR === "docling" && !env.DOCLING_URL) {
     problems.push("DOCLING_URL: required for EXTRACTOR=docling");
   }
@@ -160,7 +169,10 @@ export function parseEnv<S extends typeof BaseEnvSchema | typeof ServerEnvSchema
   return result.data as z.infer<S>;
 }
 
-/** Effective model per purpose, applying the PRD fallbacks (state → tutor, judge → tutor). */
+const ENV_KEY_HINT =
+  "set LLM_API_KEY for LLM_PROVIDER, or ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY, or LLM_BASE_URL";
+
+/** Effective model per role, applying the PRD fallbacks (state → tutor, judge → tutor). */
 export function resolveModels(env: BaseEnv) {
   return {
     tutor: env.LLM_TUTOR_MODEL,
@@ -169,16 +181,57 @@ export function resolveModels(env: BaseEnv) {
   };
 }
 
-/** One-line, secret-free description of the inference setup for boot logs (FR-9.1). */
-export function describeEnv(env: BaseEnv) {
+const PROVIDER_KEY_ENV = {
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  google: "GEMINI_API_KEY",
+} as const;
+
+/**
+ * LlmSettings from env. `LLM_PROVIDER` applies to every role unless `LLM_STATE_PROVIDER` /
+ * `LLM_JUDGE_PROVIDER` say otherwise. `LLM_API_KEY` is the key of `LLM_PROVIDER`; providers
+ * used only by other roles take their key from ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY.
+ */
+export function llmSettingsFromEnv(env: BaseEnv): LlmSettings {
   const models = resolveModels(env);
-  return {
-    provider: env.LLM_PROVIDER,
-    tutorModel: models.tutor,
-    stateModel: models.state,
-    contextWindow: env.LLM_CONTEXT_WINDOW,
-    contextStrategy: env.CONTEXT_STRATEGY,
+  const roles = {
+    tutor: { provider: env.LLM_PROVIDER, model: models.tutor },
+    state: { provider: env.LLM_STATE_PROVIDER ?? env.LLM_PROVIDER, model: models.state },
+    judge: { provider: env.LLM_JUDGE_PROVIDER ?? env.LLM_PROVIDER, model: models.judge },
+  };
+  const credentials: Partial<Record<LlmProvider, ProviderCredential>> = {};
+  for (const provider of ["anthropic", "openai", "google"] as const) {
+    const apiKey =
+      (provider === env.LLM_PROVIDER ? env.LLM_API_KEY : undefined) ??
+      env[PROVIDER_KEY_ENV[provider]];
+    if (apiKey) credentials[provider] = { apiKey };
+  }
+  if (env.ANTHROPIC_WORKSPACE_ID) {
+    credentials.anthropic = { ...credentials.anthropic, workspaceId: env.ANTHROPIC_WORKSPACE_ID };
+  }
+  if (env.LLM_BASE_URL) {
+    credentials.openai_compatible = {
+      baseUrl: env.LLM_BASE_URL,
+      ...(env.LLM_PROVIDER === "openai_compatible" && env.LLM_API_KEY
+        ? { apiKey: env.LLM_API_KEY }
+        : {}),
+    };
+  }
+  return LlmSettingsSchema.parse({
+    roles,
+    credentials,
     effort: env.LLM_EFFORT,
     cacheTtl: env.LLM_CACHE_TTL,
-  };
+    temperature: env.LLM_TEMPERATURE,
+    maxOutputTokens: env.LLM_MAX_OUTPUT_TOKENS,
+    contextWindow: env.LLM_CONTEXT_WINDOW,
+    timeoutMs: env.LLM_TIMEOUT_MS,
+    prices: env.LLM_PRICES_JSON,
+    usdToEur: env.USD_TO_EUR,
+  });
+}
+
+/** One-line, secret-free description of the inference setup for boot logs (FR-9.1). */
+export function describeEnv(env: BaseEnv) {
+  return { ...describeLlmSettings(llmSettingsFromEnv(env)), contextStrategy: env.CONTEXT_STRATEGY };
 }

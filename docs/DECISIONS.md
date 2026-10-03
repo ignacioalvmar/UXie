@@ -104,3 +104,46 @@ Consequences: Prompt authors use `#if`/`else` instead of inline fallbacks; chang
 Context: PRD §13.5 forbids committing copyrighted PDFs to the repo, but M1–M4 need a fixture paper with an approved guide.
 Decision: `fixtures/papers/visible-cues/` is an original, clearly labelled synthetic paper (fictional study, data and references) with a hand-written guide. Real course papers stay outside git (see `fixtures/README.md`).
 Consequences: Evals on the synthetic paper test tutoring behaviour, not domain coverage; the M4 benchmark should add at least one real paper from outside the repo.
+
+## ADR-018 LLM gateway details · 2026-10-03 · accepted
+
+Context: PRD §8.3 fixes the gateway's shape; some mechanics needed deciding while building it on AI SDK v7.
+Decision:
+
+- `Usage` adds `cacheWriteInputTokens` next to `cachedInputTokens` (reads), so cache writes are logged and priced separately (1.25× / 2× input for 5 m / 1 h).
+- `onUsage` receives one `UsageEvent` per model call, successful or failed: `{purpose, usage, ok, errorCode?, conversationId?, meta}`. `stream()` takes an `annotate(text)` hook whose result becomes `meta`, which is how `citation_invalid` reaches `llm_calls.meta`.
+- Errors are `LlmError` with stable codes: `provider_refusal` (finish reason `content-filter`, i.e. Anthropic `stop_reason: "refusal"`; never retried), `timeout`, `aborted`, `rate_limited`, `provider_unavailable`, `invalid_output`, `provider_error`.
+- Retries: AI SDK `maxRetries: 1`, which retries 429/5xx before any token is streamed (FR-9.3).
+- The provider stream is drained by the gateway into a buffer, so a reply completes and is saved even if the client disconnects (PRD §4.4 step 6).
+- Structured output: `native` (AI SDK `Output.object`) for Anthropic, Google and mock; `json_prompt` (JSON-only instructions + zod) for openai-compatible servers. Both share one repair retry.
+- Anthropic: `effort` only for tutor replies and only on models that accept it (not Haiku 4.5); `temperature` never sent to sampling-locked models (Sonnet 5.5, Opus 5.x, …); thinking left at the model default (adaptive on Sonnet 5.5, off on Haiku 4.5).
+- Anthropic's server-side refusal `fallbacks` are **not** enabled: FR-9.4 forbids silent fallbacks, and a refusal surfaces as `provider_refusal` for instructor review. Revisit with an ADR if refusals show up in the pilot.
+- The mock provider is built on the AI SDK mock model and simulates prompt caching (write on first sight of a stable prefix, read afterwards), so caching behaviour is testable without a paid API.
+
+## ADR-019 Tutor engine details · 2026-10-03 · accepted
+
+Context: PRD §8.7–8.8 define ports and engine API; a few mechanics needed deciding.
+Decision:
+
+- Button actions (start, Explain it to me, mode switch) are stored as `role='event'` messages whose content is the UI label, and reach the model as bracketed user turns (`[Explain it to me]`). The dialogue therefore always ends with a user turn (current Claude models reject assistant prefill), and real student text still never enters system content.
+- `ConversationRepo` gains `findReply(studentMessageId)` (idempotent retries) and `saveSummary(id, summary, throughId)`, which patches only the two summary fields so the post-turn summarizer cannot overwrite a newer turn's state; a turn re-reads those fields before saving its state.
+- `messages.help_level` is stored as `ask | hint:<index> | explain | check`.
+- `TurnStream.meta` (help level, flags, message ids) is available before the first token, for the UI and the character state.
+- Prompt prose added beyond PRD §12: `tutor/state.md`, `tutor/events/*`, `tutor/language/*`, `tutor/help/off_topic.md`, `assess_context.md`. The prompt version's `base` hash covers every file used in all turns.
+- Paper text is escaped so it cannot close `<page>`, `<paper>` or `<teaching_guide>` blocks (NFR-8).
+- The guide is serialised with a deterministic YAML emitter in core (`toYaml`), keeping the cached prefix byte-stable and the tutor package free of a YAML dependency.
+- `usage_daily` days are UTC dates.
+  Consequences: Covered by `packages/tutor/src/__tests__` (integration + 19 golden prompt snapshots).
+
+## ADR-020 Multi-provider, instructor-managed inference settings · 2026-10-03 · accepted
+
+Context: The owner wants to use OpenAI and Gemini as well as Anthropic, and to select models and enter API keys from the app rather than redeploying with new env vars. This amends PRD §7/§8.3 ("switching provider requires only env changes") and FR-9.4.
+Decision:
+
+- Providers: `anthropic`, `openai` (Responses API via `@ai-sdk/openai`), `google` (Gemini), `openai_compatible`, `mock`.
+- One `LlmSettings` object (packages/core) drives the gateway: provider + model **per role** (tutor, state, judge), credentials per provider, effort, cache TTL, temperature, output budget, tutor context window, timeout, prices. Mixed setups are allowed (e.g. Claude tutor + Gemini Flash assessment).
+- Sources: the instructor's saved settings (FR-9.6, built in M5 because that is when instructor auth exists), else env (`llmSettingsFromEnv`). The web app caches the effective settings for 60 s.
+- Keys typed into the app are encrypted with AES-256-GCM using `SETTINGS_ENCRYPTION_KEY` (env only), bound to their row via associated data, stored in `llm_credentials` with no RLS read access, and only ever leave the server as "key set …abcd" (FR-9.7). Chosen over Supabase Vault to stay portable and testable without a database; implemented in `packages/db/src/secrets.ts`.
+- Per-provider behaviour lives in adapters: OpenAI always `store: false`, `promptCacheKey` from the stable prefix, no temperature and `reasoningEffort` for reasoning models; Gemini gets `thinkingLevel` on 3+ models; Anthropic as in ADR-018.
+- The model catalog suggests models but is not a whitelist. Claude prices/context windows are filled in from Anthropic's model reference; OpenAI/Gemini prices and context windows are left for the instructor to enter rather than guessed.
+  Consequences: Any configured provider is a subprocessor (privacy notice, DPA). A provider/model change should be followed by an eval run (§13) before students use it; the settings page reminds the instructor. Losing `SETTINGS_ENCRYPTION_KEY` means re-entering keys, not data loss.
