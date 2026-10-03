@@ -197,3 +197,37 @@ describe("anthropic adapter (PRD §8.3)", () => {
     expect(bodies).toHaveLength(2); // FR-9.3: exactly one retry
   });
 });
+
+describe("auth errors", () => {
+  it("maps HTTP 401 to auth_failed without retrying", async () => {
+    const { fetch, bodies } = fakeFetch([
+      () =>
+        Response.json(
+          { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } },
+          { status: 401 },
+        ),
+    ]);
+    const error = await createGateway(env(), { fetch })
+      .stream(parts, { purpose: "tutor" })
+      .done.catch((e: unknown) => e);
+    expect((error as LlmError).code).toBe("auth_failed");
+    expect((error as LlmError).retryable).toBe(false);
+    expect(bodies).toHaveLength(1);
+  });
+});
+
+describe("workspace id", () => {
+  it("sends anthropic-workspace-id when configured (org-level keys)", async () => {
+    const headers: Headers[] = [];
+    const fetch = (async (_u: string | URL | Request, init?: RequestInit) => {
+      headers.push(new Headers(init?.headers));
+      return sseResponse(streamBody("Hi?"));
+    }) as typeof globalThis.fetch;
+    await createGateway(env({ ANTHROPIC_WORKSPACE_ID: "wrkspc_123" }), { fetch }).stream(parts, {
+      purpose: "tutor",
+    }).done;
+    expect(headers[0]!.get("anthropic-workspace-id")).toBe("wrkspc_123");
+    await createGateway(env(), { fetch }).stream(parts, { purpose: "tutor" }).done;
+    expect(headers[1]!.get("anthropic-workspace-id")).toBeNull();
+  });
+});

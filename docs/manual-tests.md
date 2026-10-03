@@ -47,8 +47,18 @@ tests on the mock provider, golden prompt snapshots in `packages/tutor/src/__tes
    `LLM_PROVIDER=openai_compatible LLM_BASE_URL=http://localhost:11434/v1 LLM_TUTOR_MODEL=<model>`
    (needs a GPU-backed Ollama with a context ≥ 8k; CPU-only machines time out).
 
-Last run: 2026-10-03, steps 1 and 3 (offline; Ollama on this machine is CPU-only with a 4k context
-and timed out, which exercised the timeout path). Step 2 pending an API key.
+Last run: 2026-10-03.
+
+- Step 1 (mock): pass.
+- Step 2 (Anthropic, Sonnet 5.5 tutor + Haiku 4.5 state): pass. Coherent Socratic dialogue with
+  valid page citations and one question per reply; misconception recorded and later resolved;
+  shortcut declined with a smaller step; Apply-mode handover. Stable prefix 5,696 tokens written
+  on turn 1 and read from turn 2 on. €0.016 for the opening, €0.004–0.006 per later tutor turn,
+  €0.002 per assessment; 6-turn session €0.049. Found and fixed: on "Explain it to me" at hint
+  level, the event note overrode the HINT directive (tutor/events/stuck.md tightened, re-tested).
+  Noted for M4 tuning: Haiku kept U1 at in_progress although the restatement arguably met the
+  mastery check; assessment calls are not cached (prefix below Haiku's 4,096-token minimum).
+- Step 3 (Ollama): CPU-only machine with a 4k context timed out, exercising the timeout path.
 
 ### M2 addendum: OpenAI and Gemini (ADR-020)
 

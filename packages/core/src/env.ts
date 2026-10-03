@@ -59,6 +59,7 @@ export const BaseEnvSchema = z.object({
   LLM_BASE_URL: opt(z.url()),
   LLM_API_KEY: opt(z.string()),
   ANTHROPIC_API_KEY: opt(z.string()),
+  ANTHROPIC_WORKSPACE_ID: opt(z.string()),
   OPENAI_API_KEY: opt(z.string()),
   GEMINI_API_KEY: opt(z.string()),
   SETTINGS_ENCRYPTION_KEY: opt(
@@ -204,6 +205,9 @@ export function llmSettingsFromEnv(env: BaseEnv): LlmSettings {
       (provider === env.LLM_PROVIDER ? env.LLM_API_KEY : undefined) ??
       env[PROVIDER_KEY_ENV[provider]];
     if (apiKey) credentials[provider] = { apiKey };
+  }
+  if (env.ANTHROPIC_WORKSPACE_ID) {
+    credentials.anthropic = { ...credentials.anthropic, workspaceId: env.ANTHROPIC_WORKSPACE_ID };
   }
   if (env.LLM_BASE_URL) {
     credentials.openai_compatible = {

@@ -90,6 +90,7 @@ export type LlmErrorCode =
   | "timeout"
   | "aborted"
   | "rate_limited"
+  | "auth_failed"
   | "provider_unavailable"
   | "invalid_output"
   | "provider_error";

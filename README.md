@@ -14,7 +14,7 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | --------- | --------------------------------------------------------- | ----------------------------------- |
 | M0        | Monorepo, tooling, dependency rules, CI, deploy configs   | done (deploy pending account setup) |
 | M1        | Pure pedagogical core                                     | done                                |
-| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (real-provider check pending)  |
+| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
 | M3–M10    | Ingestion, eval, data layer, UI, admin, launch            | planned                             |
 
 ## Layout

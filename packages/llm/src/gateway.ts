@@ -88,6 +88,8 @@ export function toLlmError(e: unknown): LlmError {
     : APICallError.isInstance((e as { lastError?: unknown })?.lastError)
       ? (e as { lastError: APICallError }).lastError
       : undefined;
+  if (api?.statusCode === 401 || api?.statusCode === 403)
+    return new LlmError("auth_failed", "The provider rejected the API key", { cause: e });
   if (api?.statusCode === 429)
     return new LlmError("rate_limited", "The model provider is rate limiting", { cause: e });
   if (api?.statusCode !== undefined && api.statusCode >= 500) {

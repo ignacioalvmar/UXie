@@ -105,6 +105,7 @@ describe("redactLlmSettings / applyLlmSettingsUpdate (FR-9.7)", () => {
       hasApiKey: true,
       keyHint: "…wxyz",
       baseUrl: null,
+      workspaceId: null,
     });
     expect(view.roles).toEqual(base.roles);
   });

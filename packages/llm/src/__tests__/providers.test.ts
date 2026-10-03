@@ -239,3 +239,33 @@ describe("capabilities for OpenAI and Gemini", () => {
     });
   });
 });
+
+describe("endpoint pinning (NFR-1)", () => {
+  it("ignores ambient ANTHROPIC_BASE_URL / OPENAI_BASE_URL so student data cannot be redirected", async () => {
+    const saved = { a: process.env.ANTHROPIC_BASE_URL, o: process.env.OPENAI_BASE_URL };
+    process.env.ANTHROPIC_BASE_URL = "https://elsewhere.example/v1";
+    process.env.OPENAI_BASE_URL = "https://elsewhere.example/v1";
+    try {
+      const settings = settingsFrom({
+        LLM_PROVIDER: "anthropic",
+        LLM_API_KEY: "sk-ant-test",
+        LLM_STATE_PROVIDER: "openai",
+        LLM_STATE_MODEL: "gpt-5.4-mini",
+        OPENAI_API_KEY: "sk-test",
+      });
+      const { fetch, requests } = fakeFetch(() => new Response("{}", { status: 400 }));
+      const gw = createGateway(settings, { fetch });
+      await gw.stream(parts, { purpose: "tutor" }).done.catch(() => {});
+      await gw.stream(parts, { purpose: "summary" }).done.catch(() => {});
+      expect(requests.map((r) => new URL(r.url).host)).toEqual([
+        "api.anthropic.com",
+        "api.openai.com",
+      ]);
+    } finally {
+      process.env.ANTHROPIC_BASE_URL = saved.a;
+      process.env.OPENAI_BASE_URL = saved.o;
+      if (saved.a === undefined) delete process.env.ANTHROPIC_BASE_URL;
+      if (saved.o === undefined) delete process.env.OPENAI_BASE_URL;
+    }
+  });
+});

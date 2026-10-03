@@ -3,6 +3,8 @@ import { promptHash, type LlmSettings, type ProviderCredential } from "@uxie/cor
 import { acceptsEffort, openaiReasoningEffort } from "../capabilities";
 import { joinedInstructions, type ProviderAdapter } from "./types";
 
+export const OPENAI_API_URL = "https://api.openai.com/v1";
+
 /**
  * OpenAI (Responses API). One system/developer message with the stable prefix first: OpenAI
  * caches identical prefixes ≥ 1024 tokens automatically, and `promptCacheKey` (a hash of the
@@ -15,7 +17,8 @@ export function openaiAdapter(
   settings: LlmSettings,
   fetch?: typeof globalThis.fetch,
 ): ProviderAdapter {
-  const provider = createOpenAI({ apiKey: cred?.apiKey, fetch });
+  // Pin the endpoint against an ambient OPENAI_BASE_URL (see anthropic.ts).
+  const provider = createOpenAI({ apiKey: cred?.apiKey, baseURL: OPENAI_API_URL, fetch });
   return {
     name: "openai",
     structuredMode: "native",

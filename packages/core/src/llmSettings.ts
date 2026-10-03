@@ -39,6 +39,8 @@ export type RoleModel = z.infer<typeof RoleModelSchema>;
 export const ProviderCredentialSchema = z.object({
   apiKey: z.string().trim().min(1).max(500).optional(),
   baseUrl: z.url().optional(),
+  /** Anthropic only: required when the key is not scoped to a workspace. Not a secret. */
+  workspaceId: z.string().trim().min(1).max(100).optional(),
 });
 export type ProviderCredential = z.infer<typeof ProviderCredentialSchema>;
 
@@ -87,7 +89,15 @@ export function llmSettingsProblems(s: LlmSettings): string[] {
 /** What an admin page or a log may show: everything except secrets. */
 export interface RedactedLlmSettings extends Omit<LlmSettings, "credentials"> {
   credentials: Partial<
-    Record<LlmProvider, { hasApiKey: boolean; keyHint: string | null; baseUrl: string | null }>
+    Record<
+      LlmProvider,
+      {
+        hasApiKey: boolean;
+        keyHint: string | null;
+        baseUrl: string | null;
+        workspaceId: string | null;
+      }
+    >
   >;
 }
 
@@ -104,6 +114,7 @@ export function redactLlmSettings(s: LlmSettings): RedactedLlmSettings {
       hasApiKey: Boolean(cred.apiKey),
       keyHint: cred.apiKey ? keyHint(cred.apiKey) : null,
       baseUrl: cred.baseUrl ?? null,
+      workspaceId: cred.workspaceId ?? null,
     };
   }
   return { ...s, credentials };
@@ -123,6 +134,7 @@ export const LlmSettingsUpdateSchema = LlmSettingsSchema.omit({ credentials: tru
         z.object({
           apiKey: z.string().trim().min(1).max(500).nullable().optional(),
           baseUrl: z.url().nullable().optional(),
+          workspaceId: z.string().trim().min(1).max(100).nullable().optional(),
         }),
       )
       .optional(),
@@ -144,6 +156,8 @@ export function applyLlmSettingsUpdate(
     else if (patch.apiKey !== undefined) next.apiKey = patch.apiKey;
     if (patch.baseUrl === null) delete next.baseUrl;
     else if (patch.baseUrl !== undefined) next.baseUrl = patch.baseUrl;
+    if (patch.workspaceId === null) delete next.workspaceId;
+    else if (patch.workspaceId !== undefined) next.workspaceId = patch.workspaceId;
     if (Object.keys(next).length) credentials[provider] = next;
     else delete credentials[provider];
   }
