@@ -1,0 +1,47 @@
+# Render Blueprint (PRD §17.1, ADR-011). The worker has no inbound port.
+services:
+  - type: worker
+    name: uxie-worker
+    runtime: node
+    region: frankfurt
+    plan: starter # raise if ingestion of large PDFs needs more RAM
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @uxie/worker build
+    startCommand: pnpm --filter @uxie/worker start
+    autoDeploy: true # deploys on push to main
+    envVars:
+      - fromGroup: uxie-prod
+  # Optional, only if EXTRACTOR=docling:
+  # - type: pserv
+  #   name: uxie-docling
+  #   runtime: image
+  #   image: { url: quay.io/docling-project/docling-serve:latest }
+  #   region: frankfurt
+  #   plan: standard
+
+envVarGroups:
+  - name: uxie-prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: LOG_LEVEL
+        value: info
+      - key: ALLOWED_EMAIL_DOMAINS
+        value: thi.de,studmail.thi.de
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: LLM_TUTOR_MODEL
+        value: claude-sonnet-5-5
+      - key: LLM_STATE_MODEL
+        value: claude-haiku-4-5
+      - key: EXTRACTOR
+        value: unpdf
+      - key: LLM_API_KEY
+        sync: false # secret: entered in the Render dashboard
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false

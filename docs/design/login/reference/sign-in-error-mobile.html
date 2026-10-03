@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Static reference exported from the UXie Login design canvas. Visual reference only: implement with Tailwind + shadcn/ui per HANDOFF.md. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UXie sign in error, mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#5135C9}a:hover{color:#3A2399}
+input::placeholder{color:#6E6887}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #5135C9;outline-offset:2px}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; overflow: hidden; background: #F6F4FB; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; color: #1F1A33; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 28px 24px 0 24px">
+    <span style="width: 32px; height: 32px; border-radius: 10px; background: #5135C9; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path><path d="M10 9.2a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2"></path></svg></span>
+    <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">UXie</span>
+  </header>
+  <form action="#" style="padding: 24px 24px 0 24px; display: flex; flex-direction: column; gap: 18px">
+    <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -0.02em">Sign in</h1>
+    <div role="alert" style="display: flex; gap: 12px; align-items: flex-start; background: #FDECEA; border: 1.5px solid #E8A39B; border-radius: 14px; padding: 14px">
+      <img src="../assets/pip.png" alt="" style="height: 56px; width: auto; flex-shrink: 0">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <p style="margin: 0; font-weight: 700; font-size: 16px; color: #8A1C12">We couldn't sign you in</p>
+        <p style="margin: 0; font-size: 15px; line-height: 1.4">Hmm, that address isn't a university email. Can you try the one from your student account?</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="se-email" style="font-weight: 700; font-size: 15px">University email</label>
+      <input id="se-email" type="email" value="lena.meyer@gmail.com" aria-invalid="true" aria-describedby="se-email-err" style="height: 50px; padding: 0 14px; border: 2px solid #B42318; border-radius: 12px; font: inherit; font-size: 17px; color: #1F1A33; background: #FFFFFF">
+      <p id="se-email-err" style="margin: 0; font-size: 14px; color: #8A1C12; display: flex; align-items: center; gap: 6px; font-weight: 700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.1"></path></svg>Use an address ending in @thi.de</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="se-pass" style="font-weight: 700; font-size: 15px">Password</label>
+      <input id="se-pass" type="password" value="password12" autocomplete="current-password" style="height: 50px; padding: 0 14px; border: 1.5px solid #857F9F; border-radius: 12px; font: inherit; font-size: 17px; color: #1F1A33; background: #FFFFFF">
+      <a href="reset-password-mobile.html" style="align-self: flex-end; font-size: 15px; font-weight: 700; padding: 10px 0">Forgot password?</a>
+    </div>
+    <button type="submit" style="height: 54px; border: 0; border-radius: 12px; background: #5135C9; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 18px">Try again</button>
+    <p style="margin: 0; font-size: 16px; text-align: center; color: #4A4563">New to UXie? <a href="sign-up-mobile.html" style="font-weight: 700">Create an account</a></p>
+  </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+/*
+ * UXie auth screens: design tokens (Tailwind CSS v4).
+ * Merge into apps/web/app/globals.css after `@import "tailwindcss";`.
+ * Usage in classes: bg-surface, text-ink, text-ink-muted, border-line, bg-primary,
+ * font-display, font-body, rounded-field, etc.
+ * Fonts: load with next/font/google in app/layout.tsx and expose them as
+ * --font-bricolage and --font-atkinson (see HANDOFF.md, section 3).
+ */
+@theme {
+  /* Color: grounds and surfaces */
+  --color-ground: #F6F4FB;        /* page background */
+  --color-surface: #FFFFFF;       /* inputs, bubbles, cards */
+  --color-panel: #ECE7FA;         /* character panel / mobile header (lavender) */
+  --color-panel-sage: #E4F1DA;    /* verify-email illustration disc */
+
+  /* Color: text */
+  --color-ink: #1F1A33;           /* headings, body, input text (16.7:1 on white) */
+  --color-ink-muted: #4A4563;     /* subtitles, secondary copy (9.0:1 on white) */
+  --color-ink-subtle: #575270;    /* footers, hints (7.4:1 on white) */
+  --color-placeholder: #6E6887;   /* input placeholder (5.3:1 on white) */
+
+  /* Color: lines */
+  --color-line: #857F9F;          /* input border, default (3.8:1 on white, meets WCAG 1.4.11) */
+  --color-line-soft: #E2DCF0;     /* speech-bubble border */
+
+  /* Color: brand / interactive */
+  --color-primary: #5135C9;       /* primary button, links, focus ring, logo tile */
+  --color-primary-hover: #3A2399; /* link + button hover */
+  --color-on-primary: #FFFFFF;
+
+  /* Color: feedback */
+  --color-danger: #B42318;        /* invalid input border */
+  --color-danger-ink: #8A1C12;    /* error text */
+  --color-danger-bg: #FDECEA;     /* error alert background */
+  --color-danger-line: #E8A39B;   /* error alert border */
+
+  /* Typography */
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: var(--font-atkinson), "Atkinson Hyperlegible", system-ui, sans-serif;
+
+  /* Radius */
+  --radius-field: 12px;           /* inputs, buttons */
+  --radius-alert: 14px;
+  --radius-chip: 16px;
+  --radius-sheet: 32px;           /* mobile header bottom corners */
+}
+
+/* Speech bubbles: tail corner is the 6px one, pointing toward the speaker. */
+.uxie-bubble {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-line-soft);
+  border-radius: 18px 18px 18px 6px;   /* speaker on the left */
+}
+.uxie-bubble--from-right { border-radius: 18px 18px 6px 18px; }
+
+:where(input, button, a, [role="checkbox"]):focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}

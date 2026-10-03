@@ -1,0 +1,17 @@
+{
+  "name": "@uxie/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PDF extraction, analysis and teaching-guide drafting.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@uxie/core": "workspace:*",
+    "@uxie/llm": "workspace:*"
+  }
+}

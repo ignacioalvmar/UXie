@@ -1,0 +1,93 @@
+# Teaching guide for the synthetic fixture paper (PRD §3.1). Approved for tests and evals.
+schema_version: 1
+title: "Visible Cues: Signifiers and Feature Discovery (synthetic fixture)"
+summary_for_tutor: >
+  A within-subjects lab study (N = 24) holds the affordance of a weekly-schedule feature constant
+  and varies only its signifier: hidden gesture, icon-only button, labelled button. Discovery rose
+  from 21% to 58% to 92%. A separate manipulation shows that a confirmation toast cuts repeated
+  saves from 31% to 6%, so signifiers and feedback solve different problems.
+starter_questions:
+  - "What is the difference between a feature being possible and a feature being visible?"
+  - "Why do you think so few people found the swipe gesture?"
+  - "Have you ever owned an app that could do something you never noticed?"
+objectives:
+  - id: U1
+    kind: understanding
+    statement: "Distinguish an affordance from a signifier using the study's three conditions."
+    refs: [{ page: 2, label: "Affordances and signifiers" }, { page: 5 }]
+    key_concepts: ["affordance", "signifier", "discoverability"]
+    question_ladder:
+      - "In your own words, what is an affordance?"
+      - "The schedule feature was equally possible in all three versions. So what actually changed between them?"
+      - "Why does the icon-only version sit between the gesture and the label in discovery?"
+    hints:
+      - "Think about what is possible for the user versus what the screen communicates."
+      - "Look at how the authors define the two terms on page 2, and what they hold constant."
+      - "An affordance is a relationship between object and agent (what can be done); a signifier is a perceivable cue that shows where and how to act. The study keeps the first fixed and varies the second."
+    misconceptions:
+      - "Affordances are visual properties of an object."
+      - "If a feature exists, users will find it eventually, so the cue does not matter."
+    mastery_check: "Student defines both terms in their own words AND explains that the conditions differ only in the signifier."
+  - id: U2
+    kind: understanding
+    statement: "Explain how feedback complements signifiers by bridging the gulf of evaluation."
+    refs: [{ page: 2, label: "Feedback and the gulf of execution" }, { page: 4 }, { page: 5 }]
+    key_concepts: ["feedback", "gulf of execution", "gulf of evaluation"]
+    question_ladder:
+      - "What happened when people saved a schedule and nothing confirmed it?"
+      - "Signifiers help before an action. When does feedback help, and with what?"
+      - "Why did the toast have a similar effect in all three cue conditions?"
+    hints:
+      - "Compare repeated saves with and without the toast."
+      - "Page 2 talks about two gulfs. Which one is about judging the result of an action?"
+      - "Feedback works after the action and tells people what happened, bridging the gulf of evaluation; signifiers work before it. Because they address different gaps, the toast helped regardless of the cue."
+    misconceptions:
+      - "Good signifiers make feedback unnecessary."
+    mastery_check: "Student explains that feedback acts after the action to confirm the result, with reference to repeated saves, and contrasts this with the role of signifiers."
+  - id: C1
+    kind: critique
+    statement: "Judge how far the study's evidence supports claims about real-world discovery."
+    refs: [{ page: 3 }, { page: 6, label: "Limitations" }]
+    key_concepts: ["sample", "lab study", "generalisability"]
+    question_ladder:
+      - "Who took part, and for how long did they explore each app?"
+      - "Would people at home, over months, behave the same way? Why or why not?"
+      - "What study would you run to test the claim with older adults?"
+    hints:
+      - "Look at the participants and the five-minute exploration on page 3."
+      - "The authors list several limitations on page 6; which matters most for everyday use?"
+      - "The sample is small, young and university-educated, and five minutes of exploration differs from long-term use, so the effect sizes may not transfer; a field study with a broader sample would test that."
+    misconceptions:
+      - "A significant p-value means the result applies to all users."
+    mastery_check: "Student names at least two concrete limitations from the paper and explains how each could change the conclusion."
+  - id: A1
+    kind: application
+    statement: "Use signifiers and feedback to justify a concrete UI decision in your own project."
+    refs: [{ page: 5, label: "Implications for design" }]
+    key_concepts: ["signifier", "feedback", "label", "icon"]
+    question_ladder:
+      - "Pick a screen in your project. Which useful action might people not notice there?"
+      - "Which signifier would you add, and what evidence from the paper supports that choice?"
+      - "What feedback would confirm the action, and what is one risk of your design?"
+    hints:
+      - "Think about any gesture-only or icon-only control in your design."
+      - "Implication (a) and (b) on page 5 say when to add a label."
+      - "For example: replace an unlabelled icon with icon + text for a feature users often miss, justified by the 58% vs 92% discovery result, add a confirmation that names the new state, and note that labels compete for space."
+    misconceptions:
+      - "Adding more labels always improves discoverability."
+    mastery_check: "Student proposes a specific signifier for a specific action, links it to the paper's evidence with a page reference, and names a limitation or trade-off."
+ux_scenarios:
+  - "A smart thermostat app whose schedule feature nobody discovers."
+  - "A note-taking app where swiping a note archives it, but users keep deleting notes instead."
+  - "A bike-sharing app where the 'report a problem' action is hidden in a long-press."
+discussion_prompts:
+  - "The authors count any opening of the schedule screen as discovery. Is that a fair measure?"
+  - "Would the gesture condition look better in a month-long field study?"
+build_prompts:
+  - "How could you A/B-test an icon-only button against an icon with a label in a prototype built with an AI coding assistant?"
+  - "What would you log to measure discovery without recording personal data?"
+evidence_limits:
+  - "Short lab study with 24 mostly young, university-educated participants; one app and one feature."
+  - "Long-term discovery and retention were not measured."
+  - "Older adults and people using assistive technology were not studied."
+  - "Only one form of feedback (a confirmation toast) was varied."

@@ -1,0 +1,19 @@
+node_modules/
+.next/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.vercel/
+.turbo/
+eval-results/
+supabase/.temp/
+supabase/.branches/
+.DS_Store
+next-env.d.ts
+*.tsbuildinfo
+
+# Real (copyrighted) papers used locally; never commit.
+fixtures/papers/local-*/

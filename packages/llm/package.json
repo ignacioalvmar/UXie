@@ -1,0 +1,16 @@
+{
+  "name": "@uxie/llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Provider-agnostic LLM gateway over the Vercel AI SDK.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@uxie/core": "workspace:*"
+  }
+}
