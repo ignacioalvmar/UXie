@@ -1,13 +1,49 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fbfaf7;
-  --foreground: #1d1b18;
-  --muted: #5d574f;
+/* Design tokens from docs/design/login/tokens.css (HANDOFF §3). */
+@theme {
+  --color-ground: #f6f4fb;
+  --color-surface: #ffffff;
+  --color-panel: #ece7fa;
+  --color-panel-sage: #e4f1da;
+
+  --color-ink: #1f1a33;
+  --color-ink-muted: #4a4563;
+  --color-ink-subtle: #575270;
+  --color-placeholder: #6e6887;
+
+  --color-line: #857f9f;
+  --color-line-soft: #e2dcf0;
+
+  --color-primary: #5135c9;
+  --color-primary-hover: #3a2399;
+  --color-on-primary: #ffffff;
+
+  --color-danger: #b42318;
+  --color-danger-ink: #8a1c12;
+  --color-danger-bg: #fdecea;
+  --color-danger-line: #e8a39b;
+
+  --color-success: #2f6b1f;
+
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: var(--font-atkinson), "Atkinson Hyperlegible", system-ui, sans-serif;
+
+  --radius-field: 12px;
+  --radius-alert: 14px;
+  --radius-chip: 16px;
+  --radius-sheet: 32px;
 }
 
+:root {
+  --background: var(--color-ground);
+  --foreground: var(--color-ink);
+  --muted: var(--color-ink-muted);
+}
+
+/* The app pages get a dark scheme; auth and onboarding are light-only for now (HANDOFF §3). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.force-light) {
     --background: #16151a;
     --foreground: #f1efe9;
     --muted: #b3ada3;
@@ -17,4 +53,36 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+/* Speech bubbles: the 6px corner is the tail, pointing toward the speaker. */
+.uxie-bubble {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1.5px solid var(--color-line-soft);
+  border-radius: 18px 18px 18px 6px;
+}
+.uxie-bubble--from-right {
+  border-radius: 18px 18px 6px 18px;
+}
+
+:where(input, textarea, select, button, a, [role="checkbox"], [role="radio"]):focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@keyframes uxie-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.uxie-alert-in {
+  animation: uxie-alert-in 160ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .uxie-alert-in {
+    animation: none;
+  }
 }

@@ -1,2 +1,7 @@
-// Supabase repositories arrive in M5 (PRD §16). Secrets encryption is used by the settings store.
+export * from "./client";
 export * from "./secrets";
+export * from "./settings";
+export * from "./repos/papers";
+export * from "./repos/conversations";
+export * from "./repos/usage";
+export * from "./repos/accounts";

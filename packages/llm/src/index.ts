@@ -17,3 +17,5 @@ export {
   type MockResponse,
 } from "./providers/mock";
 export type { ProviderAdapter } from "./providers/types";
+
+export { pingRoles, type RolePing } from "./ping";
