@@ -1,4 +1,8 @@
 pnpm-lock.yaml
 docs/PRD.md
+docs/design
 .next
 coverage
+# Prompt and fixture content is hashed/versioned; keep it byte-exact.
+prompts
+fixtures

@@ -79,3 +79,28 @@ Decision:
 Context: A character package (Pip, Miso, Luma; inline SVG + CSS motion) was designed before implementation started and is not covered by the PRD.
 Decision: Keep it as a standalone UI package (`@uxie/character`, React peer dependency only), consumed by `apps/web`. Its `HelpKind` type mirrors `HelpLevel["kind"]` structurally so it stays independent of `core`. The character choice will be stored on the profile (`profiles.uxie_character`, optional `uxie_colors`) in a migration added at M6/M7 when the workspace UI lands.
 Consequences: Extra profile columns and an enrollment picker; the tutor status must still be announced in text (the animation is decorative for assistive tech).
+
+## ADR-015 State-machine edge cases not fixed by PRD §8.2 · 2026-10-03 · accepted
+
+Context: The normative `applyAssessment` rules leave a few situations open.
+Decision:
+
+- Help-ladder bookkeeping runs every turn, even when the assessment failed: `last_help_level` records the level used for the reply, and a `check` turn resets `attempts` and `stuck_requests`. Otherwise a failed assessment right after `explain` would repeat `check` forever.
+- Without an active objective (Build mode, or all objectives of the mode demonstrated) there are no hints, so the ladder goes `ask` → `explain` at `STUCK_THRESHOLD`.
+- "Next objective" searches in guide order _after_ the current one and wraps around, skipping the current one. If the ladder is exhausted but the current objective is not demonstrated and nothing else is open, the tutor stays on the last (hardest) ladder question; if it is demonstrated and nothing else is open, `active_objective` becomes null.
+- Evidence is stored only for `demonstrated` transitions (the mastery evidence the Progress drawer shows).
+- A misconception whose `objective_id` is unknown is attributed to the active objective; with no active objective it is dropped. The list is capped at 20 and further entries are ignored.
+- `language` is stored lower-cased.
+  Consequences: All covered by table-driven tests in `packages/core/src/__tests__/applyAssessment.test.ts`, plus a seeded property test that statuses never move backwards.
+
+## ADR-016 Prompt template syntax and hashing · 2026-10-03 · accepted
+
+Context: PRD §12 drafts use expressions (`{{ x + 1 }}`, `{{ a | "fallback" }}`) that a tiny renderer should not support. `core` cannot import `node:crypto`.
+Decision: `renderTemplate` supports `{{path}}`, `{{#if}}…{{else}}…{{/if}}`, `{{#each}}` with `this`/`@index`/`@number`, and `{{! comments }}`; block tags alone on a line remove the line. Unknown or null variables throw (template bugs fail loudly); the prompt builder passes precomputed values such as `question_number`. `promptHash` uses a pure-TS SHA-256 (verified against FIPS vectors and node:crypto) over length-prefixed file contents. `prompts/` and `fixtures/` are excluded from Prettier so hashed content stays byte-exact.
+Consequences: Prompt authors use `#if`/`else` instead of inline fallbacks; changing whitespace in a prompt changes `prompt_version`, as intended.
+
+## ADR-017 Synthetic fixture paper · 2026-10-03 · accepted
+
+Context: PRD §13.5 forbids committing copyrighted PDFs to the repo, but M1–M4 need a fixture paper with an approved guide.
+Decision: `fixtures/papers/visible-cues/` is an original, clearly labelled synthetic paper (fictional study, data and references) with a hand-written guide. Real course papers stay outside git (see `fixtures/README.md`).
+Consequences: Evals on the synthetic paper test tutoring behaviour, not domain coverage; the M4 benchmark should add at least one real paper from outside the repo.

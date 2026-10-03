@@ -14,3 +14,6 @@ supabase/.branches/
 .DS_Store
 next-env.d.ts
 *.tsbuildinfo
+
+# Real (copyrighted) papers used locally; never commit.
+fixtures/papers/local-*/

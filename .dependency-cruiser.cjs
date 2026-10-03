@@ -5,6 +5,9 @@
 const pkg = (name) => `^packages/${name}/`;
 const npm = (...names) => `node_modules/(${names.join("|")})(/|$)`;
 
+/** Tests and test helpers may read fixtures from disk. */
+const TEST_FILES = "(\\.test\\.tsx?$|/__tests__/)";
+
 const UI_AND_INFRA = ["next", "react", "react-dom", "@supabase", "discord\\.js"];
 
 module.exports = {
@@ -13,7 +16,7 @@ module.exports = {
       name: "core-is-pure",
       comment: "packages/core may import zod only (and its own files). No IO, no other packages.",
       severity: "error",
-      from: { path: pkg("core"), pathNot: "\\.test\\.ts$" },
+      from: { path: pkg("core"), pathNot: TEST_FILES },
       to: {
         pathNot: [pkg("core"), npm("zod")],
       },
@@ -22,7 +25,7 @@ module.exports = {
       name: "core-no-node-builtins",
       comment: "packages/core is pure: no node: built-ins (IO).",
       severity: "error",
-      from: { path: pkg("core"), pathNot: "\\.test\\.ts$" },
+      from: { path: pkg("core"), pathNot: TEST_FILES },
       to: { dependencyTypes: ["core"] },
     },
     {

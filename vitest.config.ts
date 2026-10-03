@@ -10,6 +10,11 @@ export default defineConfig({
       provider: "v8",
       include: ["packages/*/src/**"],
       exclude: ["**/*.test.*", "**/__tests__/**"],
+      // M1 gate: the pedagogical core stays fully tested.
+      thresholds: {
+        "packages/core/src/state/**": { lines: 95 },
+        "packages/core/src/citations/**": { lines: 95 },
+      },
     },
   },
 });

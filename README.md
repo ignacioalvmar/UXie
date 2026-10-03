@@ -13,7 +13,7 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | Milestone | Scope                                                   | State                               |
 | --------- | ------------------------------------------------------- | ----------------------------------- |
 | M0        | Monorepo, tooling, dependency rules, CI, deploy configs | done (deploy pending account setup) |
-| M1        | Pure pedagogical core                                   | in progress                         |
+| M1        | Pure pedagogical core                                   | done                                |
 | M2–M10    | Engine, ingestion, eval, data layer, UI, admin, launch  | planned                             |
 
 ## Layout

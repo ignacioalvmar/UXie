@@ -15,3 +15,14 @@ Scripted checks per milestone (PRD §16). Run them before closing a milestone an
 6. Walking skeleton: the Vercel preview URL (region `fra1`) serves the placeholder; the Render `uxie-worker` log shows heartbeats. Both redeploy on push to `main`.
 
 Last run: 2026-10-03 (steps 1–5 locally; step 6 pending account setup).
+
+## M1: Pedagogical core
+
+Automated: `pnpm check` (coverage gate ≥ 95% lines on `core/state` and `core/citations`).
+
+1. `pnpm test:coverage` → the coverage table shows `core/src/state` and `core/src/citations` at ≥ 95% lines.
+2. Edit `fixtures/papers/visible-cues/guide.yaml`: set one ref to `page: 99`.
+   `pnpm vitest run packages/core` fails in `guide.test.ts`, naming
+   `objectives[n].refs[m].page: page 99 does not exist (paper has 7 pages)`. Revert.
+
+Last run: 2026-10-03.
