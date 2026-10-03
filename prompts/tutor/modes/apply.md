@@ -9,8 +9,8 @@ scenarios:
 {{/each}}
 {{/if}}
 {{#if objective_id}}
-Current objective: {{objective_id}}: "{{objective_statement}}".
-Current ladder question ({{question_number}}/{{question_total}}): "{{question}}".
+Current objective: {{objective_id}}: "{{objective_statement}}"
+Current ladder question ({{question_number}}/{{question_total}}): "{{question}}"
 {{/if}}
 Push for: a specific design decision, the concept it rests on, the evidence in the paper [p. N],
 and one limitation or risk. Label your own examples as illustrative.

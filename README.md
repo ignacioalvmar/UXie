@@ -14,7 +14,8 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | --------- | ------------------------------------------------------- | ----------------------------------- |
 | M0        | Monorepo, tooling, dependency rules, CI, deploy configs | done (deploy pending account setup) |
 | M1        | Pure pedagogical core                                   | done                                |
-| M2–M10    | Engine, ingestion, eval, data layer, UI, admin, launch  | planned                             |
+| M2        | LLM gateway, tutor engine, `pnpm uxie chat`             | done (real-provider check pending)  |
+| M3–M10    | Ingestion, eval, data layer, UI, admin, launch          | planned                             |
 
 ## Layout
 
@@ -41,6 +42,7 @@ pnpm check               # lint + typecheck + dependency rules + tests
 pnpm dev                 # web on http://localhost:3000
 pnpm --filter @uxie/worker dev
 pnpm uxie --help
+pnpm uxie chat visible-cues --provider mock --debug   # terminal tutor, no keys needed
 ```
 
 ## Deploy (walking skeleton)
