@@ -5,6 +5,7 @@ import { EnvError } from "@uxie/core";
 import { TutorError } from "@uxie/tutor";
 import { chatCommand } from "./commands/chat";
 import { doctorCommand } from "./commands/doctor";
+import { ingestCommand, type IngestCliOptions } from "./commands/ingest";
 import { repoRoot } from "./paths";
 
 const envFile = resolve(repoRoot, ".env");
@@ -46,7 +47,17 @@ program
   .requiredOption("--paper <slug>", "paper slug")
   .option("--module <slug>", "module slug")
   .option("--local", "write fixtures/papers/<slug>/{pages.json,guide.yaml} without a database")
-  .action(later("M3"));
+  .option("--title <title>", "paper title (default: PDF metadata, else first line)")
+  .option("--extractor <name>", "unpdf | docling (default: EXTRACTOR)")
+  .option("--provider <p>", "override LLM_PROVIDER for guide drafting")
+  .option("--no-guide", "extract and analyze only; skip guide drafting")
+  .option("--out <dir>", "output folder instead of fixtures/papers/<slug> (with --local)")
+  .option("--force", "overwrite existing pages.json, guide.yaml and source.pdf")
+  .action(
+    run(async (pdf: string, opts: IngestCliOptions) => {
+      await ingestCommand(pdf, opts);
+    }),
+  );
 
 const guide = program.command("guide").description("Edit teaching guides in your editor");
 guide

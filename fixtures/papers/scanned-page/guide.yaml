@@ -1,0 +1,262 @@
+# Teaching guide DRAFT for "Waiting Out Loud: Progress Feedback in Voice Assistants" (FR-5.4).
+# Drafted by anthropic:claude-sonnet-5-5 with guide_draft@53d7a43f991d; review and edit before approving.
+schema_version: 1
+title: "Waiting Out Loud: Progress Feedback in Voice Assistants"
+summary_for_tutor: "This synthetic, fictional paper reports a 90-person between-subjects online
+  study of three ways to fill 3-8 second waits in a simulated voice assistant: silence, a repeating
+  earcon, and a spoken progress phrase. Spoken phrases were rated most transparent and prompted the
+  fewest repeated requests, but made waits feel longer than earcons did. Silence was worst on
+  understanding and repeated requests. Use it to teach the single-channel constraint of voice,
+  trade-offs between feedback types, and how to critique a small simulated study. The authors
+  suggest a hybrid design that the study did not test."
+starter_questions:
+  - Why can't a voice assistant just show a spinner like an app does?
+  - If a spoken update explains what is happening, why would it make the wait feel longer?
+  - What would you do if your assistant needed eight seconds to book a table?
+  - Can a simple beep really stop people from saying 'Hello? Are you there?'
+objectives:
+  - id: U1
+    kind: understanding
+    statement: "Explain why progress feedback is harder in voice interfaces than in graphical ones:
+      sound is the only channel, so cues compete with the user's speech and the coming answer."
+    refs:
+      - page: 1
+        label: "Introduction: single sound channel vs visual spinners"
+      - page: 1
+        label: "Abstract: signal work without occupying the speaking channel"
+    key_concepts:
+      - single-channel interaction
+      - progress feedback
+      - channel competition
+      - spinner/progress bar analogy
+      - masking the answer
+    question_ladder:
+      - What does a spinner or progress bar do on a screen, and which channel does it use?
+      - What channel does a voice assistant have, and what else needs that channel during a wait?
+      - Why does the paper say progress cues in voice 'compete'? Name two things they compete with.
+      - How would you state the paper's design principle in one sentence, in your own words?
+    hints:
+      - Think about what the user's eyes and ears are doing on a phone versus with a smart speaker.
+      - On a screen the spinner uses vision while the user is not typing or tapping. What is the
+        equivalent free channel in voice?
+      - "The paper names two competitors for the sound channel: the user's own speech (they may want
+        to interrupt or repeat) and the answer that is about to arrive."
+      - "Near-explanation: a voice assistant has only sound. Any progress cue is itself sound, so it
+        can talk over the user or mask the start of the real answer. Good feedback therefore signals
+        that work is happening while staying out of the way of speaking and listening."
+    misconceptions:
+      - Voice interfaces simply need the audio version of a spinner, so the design problem is the
+        same as on screens.
+      - Any feedback is better than none, regardless of how it occupies the channel.
+      - The problem is only technical latency, not a design problem.
+    mastery_check: The student can explain, without prompting, why a visual progress cue does not
+      transfer directly to voice, naming both the single sound channel and at least one thing a cue
+      can interfere with.
+  - id: U2
+    kind: understanding
+    statement: Compare silence, earcon and spoken-phrase feedback on transparency, repeated requests and
+      perceived wait, and explain the trade-off the results reveal.
+    refs:
+      - page: 4
+        label: "Results: repeats, understanding ratings, overestimation"
+      - page: 4
+        label: "Discussion: why spoken phrases may feel longer"
+      - page: 2
+        label: "Method: the three conditions"
+    key_concepts:
+      - transparency
+      - perceived waiting time
+      - repeated requests
+      - earcon
+      - spoken progress phrase
+      - trade-off
+    question_ladder:
+      - Which condition produced the highest understanding ratings, and which the lowest?
+      - Which condition made an 8-second wait feel shortest, and which longest?
+      - Why might the most informative cue also feel the longest? What explanation do the authors
+        offer?
+      - Silence had 31% repeated requests, earcons 9% and spoken 4%. What does that say about
+        silence, and does it support claiming earcons are best at preventing repeats?
+      - If you could only optimise one metric, which would you pick for a kitchen timer assistant
+        versus a banking assistant, and why?
+    hints:
+      - Make a small table with three rows (silence, earcon, spoken) and three columns
+        (understanding, repeats, overestimated wait) using the numbers on page 4.
+      - Spoken wins on understanding (6.1) and repeats (4%), but earcon wins on perceived time
+        (over-estimate of 1.2 s versus 2.6 s).
+      - The authors suggest people listen to the spoken phrase and count the time, whereas the
+        earcon stays in the background.
+      - "Near-explanation: no single option is best on every measure. Spoken phrases explain best
+        but lengthen perceived waits, earcons keep waits feeling short and still cut repeats, and
+        silence is worst on understanding and on repeated 'Are you there?' requests. The right
+        choice depends on which cost matters in the context."
+    misconceptions:
+      - The spoken phrase is simply the best option because it scores highest on understanding.
+      - Perceived wait and actual wait were different lengths between conditions (delays were in
+        fact fixed and balanced).
+      - Silence is neutral and does no harm.
+      - Earcons had the fewest repeated requests (spoken had the fewest, 4% vs 9%).
+    mastery_check: The student can state the three conditions' rankings on understanding, repeats and
+      perceived wait from memory or the table, and explain the transparency versus perceived-time
+      trade-off.
+  - id: U3
+    kind: understanding
+    statement: Describe why silence is read as failure and how earcons and spoken phrases differ in
+      learnability, speed and risk of masking the answer.
+    refs:
+      - page: 2
+        label: "Related work: silence read as failure; earcons vs speech"
+      - page: 4
+        label: "Results: repeated requests most common after silence"
+    key_concepts:
+      - silence as failure
+      - earcon
+      - learned meaning
+      - language independence
+      - masking
+    question_ladder:
+      - According to the related work, how do users interpret silence longer than about two seconds?
+      - What are two advantages and one disadvantage of earcons?
+      - What are the advantage and the two disadvantages of spoken phrases?
+      - How do these properties explain why someone might pair an earcon with an occasional spoken
+        phrase?
+    hints:
+      - Look at the sentence about Lindqvist (2024) on page 2.
+      - Earcons are cheap and language-independent, but their meaning must be learned.
+      - Spoken phrases need no learning, but they take time to say and can cover the start of the
+        real answer.
+      - "Near-explanation: silence over about two seconds tends to signal a broken system, so users
+        repeat themselves. Earcons cost little but must be learned; speech is self-explanatory but
+        slow and can mask the answer. This is why mixing them is attractive."
+    misconceptions:
+      - Earcons are self-explanatory to every user.
+      - Spoken phrases have no costs because they are natural language.
+      - Users are comfortable with silence as long as the answer is correct.
+    mastery_check: The student can give one benefit and one cost for each of earcons and spoken phrases,
+      and link silence to users interpreting a failure.
+  - id: A1
+    kind: application
+    statement: Decide what progress feedback a specific voice task should use, given its expected wait,
+      and justify the choice with the paper's results and its untested hybrid suggestion.
+    refs:
+      - page: 4
+        label: "Discussion: one spoken phrase then a quiet earcon"
+      - page: 4
+        label: "Results: 8-second overestimation by condition"
+      - page: 2
+        label: "Method: 3, 5 and 8 second delays"
+    key_concepts:
+      - expected duration
+      - hybrid feedback
+      - timing of cues
+      - context of use
+      - testing before shipping
+    question_ladder:
+      - Your assistant is booking a flight and expects to take about 8 seconds. What happens if you
+        leave it silent?
+      - Which cue would you use for a 3-second weather lookup, and why?
+      - For the 8-second flight booking, what exact sequence of sounds would you propose, and at
+        what timings?
+      - What evidence would make you change your design, and how would you test the hybrid, which
+        the paper only suggests?
+    hints:
+      - Use the paper's three delay lengths (3, 5, 8 s) and think about which cues are worth their
+        cost at each.
+      - For short waits, a quiet earcon may be enough; a spoken phrase can run into the answer and
+        lengthen the felt wait.
+      - The authors propose one short spoken phrase for waits expected to be long, then a quiet
+        earcon. Decide when in the wait the phrase should come, and what it should name.
+      - "Near-explanation: for an 8-second flight search, say one short task phrase around the
+        two-second mark ('Searching flights'), then continue with a soft repeating earcon until the
+        answer. For about 3 seconds, rely on an earcon or nothing very intrusive. Treat this as a
+        hypothesis, since the study did not test the combination, and test it against earcon-only
+        and spoken-only."
+    misconceptions:
+      - The paper proves the hybrid works.
+      - Choose one feedback type for the whole product regardless of expected delay.
+      - The spoken phrase should repeat every two seconds to keep users informed.
+    mastery_check: Given a new voice task with a stated expected delay, the student proposes a timed cue
+      sequence, cites at least two numbers from the results, and flags the hybrid as untested.
+  - id: C1
+    kind: critique
+    statement: Evaluate what the study can and cannot support, considering its simulated assistant,
+      self-reported time, online English-only sample, and a claim about earcons that the numbers
+      only partly back.
+    refs:
+      - page: 2
+        label: "Method: N = 90, simulated assistant, measures"
+      - page: 4
+        label: "Discussion and limitations: simulation, self-report, English only"
+      - page: 4
+        label: "Results: spoken had fewest repeats (4%)"
+    key_concepts:
+      - simulated assistant
+      - self-report bias
+      - sample and generalisability
+      - between-subjects design
+      - confounds
+      - overclaiming
+    question_ladder:
+      - List three limitations the authors admit on page 4.
+      - Why might asking about perceived time right after each request distort the answer?
+      - The discussion says earcons keep users from repeating themselves. Do the repeat rates show
+        earcons are best at this? Explain.
+      - What design differences between the earcon and spoken conditions (timing, repetition) might
+        confound the comparison?
+      - Design a follow-up study that would address two of these limits.
+    hints:
+      - "The authors list: simulated assistant, fixed tasks, online sample, English only,
+        self-reported time, fixed delays, and users who may not be fully attentive at home."
+      - Self-reports given right after a request may be influenced by how annoying or informative
+        the cue was, not only by time passing.
+      - Compare 9% (earcon) and 4% (spoken). Both are far below silence at 31%, but spoken is lowest.
+      - "Near-explanation: the study shows both cues beat silence and reveals a trade-off, but with
+        30 people per group, a simulation, English only, self-reported time, and no reported
+        statistical tests, it cannot show real-world effects. The spoken condition played once while
+        the earcon repeated, so form and frequency are confounded. A stronger follow-up would use a
+        real assistant in homes, behavioural timing measures and a hybrid condition."
+    misconceptions:
+      - N = 90 means the results generalise to all users and languages.
+      - Perceived time self-reports are as objective as measured behaviour.
+      - Because the paper reports numbers, significance has been shown.
+    mastery_check: The student names at least three specific limitations, identifies the mismatch
+      between the earcon-prevents-repeats claim and the 9% vs 4% numbers, and proposes one concrete
+      improvement.
+ux_scenarios:
+  - A smart speaker booking a restaurant table that takes about 8 seconds and must decide how to
+    signal progress without talking over the user's possible interruption.
+  - A car voice assistant searching for a charging station while the driver is paying attention to
+    the road and cannot glance at a screen.
+  - A voice banking assistant checking a balance, where the user is anxious and silence may read as
+    a failure or a security problem.
+  - A kitchen timer or recipe assistant used with messy hands, where short lookups should not
+    trigger long spoken status updates.
+  - A voice assistant used in a language other than English, where earcon meanings and phrase
+    lengths may differ.
+discussion_prompts:
+  - When would you accept longer perceived waits in exchange for higher transparency, and when not?
+  - How would you teach users the meaning of an earcon without a screen or a tutorial?
+  - If users hear a spoken progress phrase and start counting seconds, how could you redesign the
+    phrase to avoid it?
+  - What should an assistant do if the user speaks during a progress cue?
+  - How should the findings change for users who are not looking at a device, such as drivers or
+    people cooking?
+build_prompts:
+  - Prototype a voice flow with Web Speech API and Web Audio that lets you switch between silence, a
+    repeating earcon, and a spoken phrase for fixed 3, 5 and 8 second delays.
+  - Add a hybrid mode that speaks one short task phrase at two seconds and then plays a quiet
+    earcon, and log how often a tester says something during the wait.
+  - Build a small test harness that collects a time estimate in seconds and a 1-7 understanding
+    rating after each simulated request.
+evidence_limits:
+  - The study used a simulated assistant and a fixed set of tasks, so real assistants with variable
+    delays and imperfect speech recognition may behave differently.
+  - The sample was 90 adults from an online panel, with 30 per condition, English only; it says
+    nothing about other languages, ages or cultures.
+  - Perceived wait was self-reported immediately after each request, which can be affected by how
+    annoying or informative the cue was; no behavioural time measure is reported.
+  - No statistical tests or confidence intervals are reported in the text provided, so differences
+    between conditions are not shown to be reliable.
+  - The hybrid design (a spoken phrase then an earcon) is only suggested, not tested.
+  - The spoken phrase played once while the earcon repeated every two seconds, so cue type and
+    repetition are confounded; the content of Figure 2 is not available in the page text.
