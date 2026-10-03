@@ -1,5 +1,7 @@
 import {
   activeObjective,
+  escapeAttr,
+  escapeBlockTags,
   toYaml,
   type HelpLevel,
   type LearnerState,
@@ -31,12 +33,6 @@ export const BASE_PROMPT_FILES = [
   "tutor/help/shortcut.md",
   "tutor/help/off_topic.md",
 ];
-
-const escapeAttr = (s: string) => s.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
-
-/** Neutralise tags that could close our data blocks from inside the paper text (NFR-8). */
-const escapeBlockTags = (s: string) =>
-  s.replace(/<(\/?)(paper|page|teaching_guide)\b/gi, "&lt;$1$2");
 
 /** `<paper …><page n="1">…</page>…</paper>`, all pages or only `pageNumbers`. */
 export function renderPaperBlock(paper: PaperForTutor, pageNumbers?: number[]): string {

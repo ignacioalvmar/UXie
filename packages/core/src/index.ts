@@ -22,3 +22,4 @@ export * from "./prompts/hash";
 export * from "./text/tokens";
 export * from "./text/chunkPages";
 export * from "./text/yaml";
+export * from "./text/paperBlock";

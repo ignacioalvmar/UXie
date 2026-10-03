@@ -37,6 +37,45 @@ export interface MockResponse {
 
 export type MockResponder = (call: MockCall) => string | MockResponse;
 
+/**
+ * A placeholder teaching guide that passes `TeachingGuideSchema` for any paper (refs to page 1),
+ * so `pnpm uxie ingest --local` works offline. Its content is generic, not drafted from the paper.
+ */
+export function mockGuideDraft(system: string) {
+  const title = /<paper title="([^"]*)"/.exec(system)?.[1] ?? "Mock paper";
+  const objective = (id: string, kind: "understanding" | "application", statement: string) => ({
+    id,
+    kind,
+    statement,
+    refs: [{ page: 1, label: "Abstract" }],
+    key_concepts: ["main claim"],
+    question_ladder: [
+      "In your own words, what is the paper's main claim?",
+      "What evidence does the paper give for it?",
+    ],
+    hints: [
+      "Start with the abstract on page 1.",
+      "The abstract states the claim and the evidence.",
+    ],
+    misconceptions: [],
+    mastery_check: "The student states the claim in their own words and names the evidence.",
+  });
+  return {
+    title: `${title} (mock draft)`,
+    summary_for_tutor: "Mock draft produced by LLM_PROVIDER=mock. Replace it before approving.",
+    starter_questions: ["What problem does this paper address?", "What did the authors find?"],
+    objectives: [
+      objective("U1", "understanding", "State the paper's main claim in your own words."),
+      objective("U2", "understanding", "Describe the evidence behind the main claim."),
+      objective("A1", "application", "Use the main claim to justify one UX decision."),
+    ],
+    ux_scenarios: ["A product team deciding how to apply the paper's finding."],
+    discussion_prompts: [],
+    build_prompts: [],
+    evidence_limits: [],
+  };
+}
+
 /** Default scripted behaviour: valid assessments, short Socratic replies naming the help level. */
 export const defaultMockResponder: MockResponder = (call) => {
   if (call.purpose === "assessment") {
@@ -52,6 +91,7 @@ export const defaultMockResponder: MockResponder = (call) => {
   }
   if (call.purpose === "summary")
     return "The student has been discussing the paper's main concepts.";
+  if (call.purpose === "guide_draft") return JSON.stringify(mockGuideDraft(call.system));
   if (call.json) return "{}";
   const help = /HELP DIRECTIVE: (\w+)/.exec(call.system)?.[1]?.toLowerCase() ?? "ask";
   return `(mock UXie, ${help}) That's a thoughtful start. The paper discusses this on page 1 [p. 1]. What do you think the authors mean?`;

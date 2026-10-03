@@ -1,0 +1,38 @@
+{
+  "title": "Waiting Out Loud: Progress Feedback in Voice Assistants",
+  "authors": [
+    "C. Fixture",
+    "D. Synthetic"
+  ],
+  "extractor": "unpdf",
+  "warnings": [
+    {
+      "kind": "scanned_or_figure_only",
+      "page": 3,
+      "message": "Page 3 has very little extractable text (8 characters); it may be scanned or figure-only, so UXie cannot read it."
+    },
+    {
+      "kind": "references_start",
+      "page": 4,
+      "message": "References start on page 4."
+    }
+  ],
+  "pages": [
+    {
+      "n": 1,
+      "text": "Waiting Out Loud: Progress Feedback in Voice Assistants\nC. Fixture, D. Synthetic. SYNTHETIC TEST PAPER written for the UXie test suite; the study, data and\nreferences are fictional.\n\nAbstract\nVoice assistants often need several seconds to complete a request, but unlike a screen they cannot show\na spinner. We compared three ways of filling that silence in a between-subjects online study (N = 90):\nsilence, a short earcon repeated every two seconds, and a spoken progress phrase (\"Still checking your\ncalendar\"). Participants rated the spoken phrase as the most transparent, but it also made waits feel\nlonger than the earcon did. Repeated requests (\"Hello? Are you there?\") were most frequent after silence.\nWe argue that progress feedback in voice interfaces must signal that work is happening without\noccupying the same channel the user needs for speaking.\n\n1 Introduction\nOn a screen, designers can show that a system is busy with a spinner, a progress bar or a skeleton\nlayout. Each of these occupies a visual channel the user is not using to give input. A voice assistant has\nonly one channel: sound. Any progress cue competes with the user's own speech and with the answer\nthat is about to arrive. This paper asks how voice interfaces should communicate progress during waits of\nthree to eight seconds."
+    },
+    {
+      "n": 2,
+      "text": "2 Related work\nResearch on graphical interfaces has long recommended feedback for any wait longer than about one\nsecond, and progress indicators with an estimate for waits longer than about ten seconds. Fictional prior\nwork by Ortega (2023) found that animated progress bars reduce perceived waiting time compared with\nstatic ones. For voice, Lindqvist (2024) reported that users interpret silence of more than two seconds as\na failure. Earcons, short non-speech sounds, are cheap to produce and language-independent, but their\nmeaning must be learned. Spoken phrases need no learning but take time to say and can mask the start\nof the real answer.\n\n3 Method\nNinety adult participants were recruited through an online panel and randomly assigned to one of three\nconditions (30 each). Each participant made twelve requests to a simulated assistant, such as adding an\nevent or checking the weather. Response delays were fixed at 3, 5 or 8 seconds in a balanced order. In\nthe silence condition nothing played during the delay. In the earcon condition a soft two-tone sound played\nevery two seconds. In the spoken condition the assistant said a short phrase naming the task after two\nseconds. We logged repeated requests during the delay and asked participants after each request how\nlong the wait felt (in seconds) and how well they understood what the assistant was doing (1-7 scale)."
+    },
+    {
+      "n": 3,
+      "text": "Figure 2."
+    },
+    {
+      "n": 4,
+      "text": "4 Results\nRepeated requests occurred in 31% of silent waits, 9% of earcon waits and 4% of spoken waits.\nUnderstanding ratings were highest for the spoken phrase (mean 6.1), followed by the earcon (4.8) and\nsilence (2.9). Perceived wait was shortest with the earcon: on average participants overestimated an\n8-second wait by 1.2 s with the earcon, by 2.6 s with the spoken phrase and by 3.4 s with silence. Figure\n2 summarises the pattern across delay lengths.\n\n5 Discussion and limitations\nSpoken phrases explain best but make waits feel longer, perhaps because the user listens to them and\ncounts the time. Earcons keep users from repeating themselves while staying out of the way. A practical\ndesign may combine both: one short spoken phrase for waits that are expected to be long, then a quiet\nearcon. The study used a simulated assistant, a fixed set of tasks, an online sample and only English. We\nmeasured perceived time by self-report immediately after each request. Real assistants have variable\ndelays, and users at home may not be paying full attention.\n\nReferences\nLindqvist, M. (2024). Silence as failure in conversational agents. Fictional Journal of Voice Interaction, 2,\n14-29.\nOrtega, R. (2023). Animated progress and perceived waiting. Fictional Proceedings on Interface Timing,\n101-110."
+    }
+  ]
+}

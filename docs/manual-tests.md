@@ -77,3 +77,32 @@ With real keys:
 LLM_STATE_MODEL=gemini-3.5-flash-lite` → the debug lines show `tutor … anthropic` and
    `assessment … google`.
    Set `LLM_PRICES_JSON` entries for OpenAI/Gemini models, or costs show €0.
+
+## M3: Ingestion and guide drafting
+
+Automated (`pnpm check`): both fixture PDFs ingest with the right page count; running headers and
+page-number footers are stripped; the figure-only page of `scanned-page` raises
+`scanned_or_figure_only`; references start pages are found; the mock provider's guide validates;
+invalid draft → repair retry → still-invalid draft saved with its issues; a PDF without text →
+version failed; docling response parsing; CLI output files and no-overwrite behaviour.
+
+With a real provider (needs `LLM_API_KEY`):
+
+1. `pnpm uxie ingest fixtures/papers/scanned-page/source.pdf --paper scanned-page --local --provider anthropic --out tmp/scanned`
+   → 4 pages, warning for page 3, references on page 4, `guide.yaml` drafted (its header names the
+   model and prompt version); `pnpm uxie chat tmp/scanned --provider mock` loads it.
+2. The same for `fixtures/papers/visible-cues/source.pdf` (7 pages, references on page 7).
+3. A real course PDF (outside git, e.g. `fixtures/papers/local-norman/`): compare the extracted text
+   of two pages with the PDF, and read the guide critically before approving it.
+4. Regenerate the fixture PDFs with `pnpm --filter @uxie/ingest fixtures:pdf`; `git status` shows no change.
+
+Last run: 2026-10-03.
+
+- Steps 1–2 (Anthropic, Sonnet 5.5): pass. With the first prompt both drafts needed one repair
+  (`evidence_limits` had 7 items; €0.11–0.12 per guide). After stating the hard limits in
+  `guide_draft.md`, both validated on the first try (€0.06 per guide). The committed `scanned-page`
+  guide has accurate page refs, graduated hints ending in a near-explanation, and evidence limits
+  that name the cue-frequency confound and the missing statistics. It still needs the instructor's
+  review before it counts as approved.
+- Step 3: not run (no real paper in this checkout).
+- Step 4: pass (identical bytes).
