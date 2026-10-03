@@ -1,10 +1,13 @@
-import { parseEnv, BaseEnvSchema } from "@uxie/core";
+import { BaseEnvSchema, llmSettingsFromEnv, parseEnv } from "@uxie/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createGateway, LlmError, type PromptParts, type UsageEvent } from "../index";
 
+const settingsFrom = (vars: Record<string, string>) =>
+  llmSettingsFromEnv(parseEnv(BaseEnvSchema, vars));
+
 const env = (extra: Record<string, string> = {}) =>
-  parseEnv(BaseEnvSchema, {
+  settingsFrom({
     LLM_PROVIDER: "anthropic",
     LLM_API_KEY: "test-key",
     LLM_TUTOR_MODEL: "claude-sonnet-5-5",

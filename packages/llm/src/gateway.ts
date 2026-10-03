@@ -7,19 +7,21 @@ import {
   type LanguageModelUsage,
 } from "ai";
 import { z } from "zod";
+import type { LlmProvider, LlmSettings, RoleModel } from "@uxie/core";
 import { acceptsTemperature } from "./capabilities";
 import { costEur } from "./cost";
 import { anthropicAdapter } from "./providers/anthropic";
 import { googleAdapter } from "./providers/google";
 import { mockAdapter, type MockResponder } from "./providers/mock";
+import { openaiAdapter } from "./providers/openai";
 import { openaiCompatibleAdapter } from "./providers/openaiCompatible";
 import type { ProviderAdapter } from "./providers/types";
 import {
   LlmError,
-  type LlmEnv,
   type LlmGateway,
   type LlmStream,
   type PromptParts,
+  PURPOSE_ROLE,
   type Purpose,
   type StructuredOptions,
   type Usage,
@@ -29,16 +31,16 @@ import {
 export interface GatewayOptions {
   /** Receives every call, successful or not; adapters wire it to `llm_calls` (PRD §8.3). */
   onUsage?: (event: UsageEvent) => void;
-  /** Scripted responses when LLM_PROVIDER=mock. */
+  /** Scripted responses for roles served by the mock provider. */
   mockResponder?: MockResponder;
   /** Custom fetch for HTTP providers (tests inspect request bodies with it). */
   fetch?: typeof globalThis.fetch;
-  /** Replace the adapter entirely (tests). */
-  adapter?: ProviderAdapter;
+  /** Replace adapters per provider (tests). */
+  adapters?: Partial<Record<LlmProvider, ProviderAdapter>>;
   now?: () => number;
 }
 
-/** Output budget per purpose; tutor replies get LLM_MAX_OUTPUT_TOKENS (headroom for thinking). */
+/** Output budget per purpose; tutor replies get settings.maxOutputTokens (headroom for thinking). */
 const MAX_TOKENS: Record<Exclude<Purpose, "tutor">, number> = {
   assessment: 1024,
   summary: 1024,
@@ -51,15 +53,23 @@ const MAX_TOKENS: Record<Exclude<Purpose, "tutor">, number> = {
 /** One retry with backoff, only before the first token (FR-9.3); the AI SDK retries 429/5xx. */
 const MAX_RETRIES = 1;
 
-function adapterFor(env: LlmEnv, o: GatewayOptions): ProviderAdapter {
-  if (o.adapter) return o.adapter;
-  switch (env.LLM_PROVIDER) {
+function createAdapter(
+  provider: LlmProvider,
+  settings: LlmSettings,
+  o: GatewayOptions,
+): ProviderAdapter {
+  const override = o.adapters?.[provider];
+  if (override) return override;
+  const cred = settings.credentials[provider];
+  switch (provider) {
     case "anthropic":
-      return anthropicAdapter(env, o.fetch);
-    case "openai_compatible":
-      return openaiCompatibleAdapter(env, o.fetch);
+      return anthropicAdapter(cred, settings, o.fetch);
+    case "openai":
+      return openaiAdapter(cred, settings, o.fetch);
     case "google":
-      return googleAdapter(env, o.fetch);
+      return googleAdapter(cred, settings, o.fetch);
+    case "openai_compatible":
+      return openaiCompatibleAdapter(cred, o.fetch);
     case "mock":
       return mockAdapter(o.mockResponder);
   }
@@ -137,26 +147,33 @@ export function extractJson(text: string): unknown {
   return JSON.parse(body.slice(start, end + 1));
 }
 
-export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGateway {
-  const adapter = adapterFor(env, options);
+/**
+ * Gateway over the providers named in `settings` (PRD §8.3, FR-9.6). Each purpose is served by
+ * its role's provider and model; adapters are created on first use, so a provider without
+ * credentials only fails if a role actually uses it.
+ */
+export function createGateway(settings: LlmSettings, options: GatewayOptions = {}): LlmGateway {
   const now = options.now ?? (() => performance.now());
-  const stateModel = env.LLM_STATE_MODEL ?? env.LLM_TUTOR_MODEL;
-  const judgeModel = env.LLM_JUDGE_MODEL ?? env.LLM_TUTOR_MODEL;
-
-  const modelFor = (purpose: Purpose): string => {
-    switch (purpose) {
-      case "assessment":
-      case "summary":
-      case "report":
-        return stateModel;
-      case "eval_judge":
-        return judgeModel;
-      default:
-        return env.LLM_TUTOR_MODEL;
+  const adapters = new Map<LlmProvider, ProviderAdapter>();
+  const adapterOf = (provider: LlmProvider) => {
+    let a = adapters.get(provider);
+    if (!a) {
+      a = createAdapter(provider, settings, options);
+      adapters.set(provider, a);
     }
+    return a;
   };
 
+  const modelFor = (purpose: Purpose): RoleModel => settings.roles[PURPOSE_ROLE[purpose]];
+  const route = (purpose: Purpose, modelOverride?: string) => {
+    const role = modelFor(purpose);
+    return { adapter: adapterOf(role.provider), model: modelOverride ?? role.model };
+  };
+  const maxTokensFor = (purpose: Purpose, requested?: number) =>
+    requested ?? (purpose === "tutor" ? settings.maxOutputTokens : MAX_TOKENS[purpose]);
+
   const toUsage = (
+    provider: LlmProvider,
     model: string,
     u: LanguageModelUsage | undefined,
     latencyMs: number,
@@ -178,12 +195,12 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
       costEur: costEur(
         model,
         { noCache, cacheRead, cacheWrite, output },
-        env.LLM_PRICES_JSON,
-        env.LLM_CACHE_TTL,
-        env.USD_TO_EUR,
+        settings.prices,
+        settings.cacheTtl,
+        settings.usdToEur,
       ),
       model,
-      provider: adapter.name,
+      provider,
     };
   };
 
@@ -195,9 +212,9 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
     }
   };
 
-  const temperatureFor = (model: string, requested?: number) => {
-    const t = requested ?? env.LLM_TEMPERATURE;
-    return t !== undefined && acceptsTemperature(adapter.name, model) ? { temperature: t } : {};
+  const temperatureFor = (provider: LlmProvider, model: string, requested?: number) => {
+    const t = requested ?? settings.temperature;
+    return t !== undefined && acceptsTemperature(provider, model) ? { temperature: t } : {};
   };
 
   const signalFor = (timeoutMs: number, signal?: AbortSignal) =>
@@ -206,24 +223,21 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
       : AbortSignal.timeout(timeoutMs);
 
   return {
-    provider: adapter.name,
     modelFor,
 
     stream(p, o): LlmStream {
-      const model = o.model ?? modelFor(o.purpose);
+      const { adapter, model } = route(o.purpose, o.model);
       const started = now();
       const channel = new Channel<string>();
       const result = streamText({
         model: adapter.model(model, o.purpose),
         instructions: adapter.instructions(p),
         messages: p.messages,
-        maxOutputTokens:
-          o.maxTokens ??
-          (o.purpose === "tutor" ? env.LLM_MAX_OUTPUT_TOKENS : MAX_TOKENS[o.purpose]),
-        ...temperatureFor(model, o.temperature),
-        providerOptions: adapter.providerOptions(model, o.purpose),
+        maxOutputTokens: maxTokensFor(o.purpose, o.maxTokens),
+        ...temperatureFor(adapter.name, model, o.temperature),
+        providerOptions: adapter.providerOptions(model, o.purpose, p),
         maxRetries: MAX_RETRIES,
-        abortSignal: signalFor(env.LLM_TIMEOUT_MS, o.signal),
+        abortSignal: signalFor(settings.timeoutMs, o.signal),
         onError: () => {}, // errors are surfaced through the stream parts below
       });
 
@@ -256,7 +270,7 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
         if (failure === undefined && finishReason === "content-filter") {
           failure = new LlmError("provider_refusal", "The model declined to answer");
         }
-        const u = toUsage(model, usage, now() - started, ttft);
+        const u = toUsage(adapter.name, model, usage, now() - started, ttft);
         if (failure !== undefined) {
           const error = toLlmError(failure);
           report({
@@ -281,9 +295,9 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
     },
 
     async structured<T>(p: PromptParts, schema: z.ZodType<T>, o: StructuredOptions) {
-      const model = o.model ?? modelFor(o.purpose);
+      const { adapter, model } = route(o.purpose, o.model);
       const totals: Usage[] = [];
-      const timeoutMs = o.timeoutMs ?? env.LLM_TIMEOUT_MS;
+      const timeoutMs = o.timeoutMs ?? settings.timeoutMs;
       const jsonPrompt = adapter.structuredMode === "json_prompt";
       const parts: PromptParts = jsonPrompt
         ? {
@@ -304,16 +318,14 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
             model: adapter.model(model, o.purpose),
             instructions: adapter.instructions(parts),
             messages,
-            maxOutputTokens:
-              o.maxTokens ??
-              (o.purpose === "tutor" ? env.LLM_MAX_OUTPUT_TOKENS : MAX_TOKENS[o.purpose]),
-            ...temperatureFor(model),
-            providerOptions: adapter.providerOptions(model, o.purpose),
+            maxOutputTokens: maxTokensFor(o.purpose, o.maxTokens),
+            ...temperatureFor(adapter.name, model),
+            providerOptions: adapter.providerOptions(model, o.purpose, parts),
             maxRetries: MAX_RETRIES,
             abortSignal: signalFor(timeoutMs, o.signal),
             ...(jsonPrompt ? {} : { output: Output.object({ schema }) }),
           });
-          const usage = toUsage(model, res.totalUsage, now() - started);
+          const usage = toUsage(adapter.name, model, res.totalUsage, now() - started);
           totals.push(usage);
           if (res.finishReason === "content-filter") {
             const error = new LlmError("provider_refusal", "The model declined to answer");
@@ -344,6 +356,7 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
         } catch (e) {
           if (NoObjectGeneratedError.isInstance(e)) {
             const usage = toUsage(
+              adapter.name,
               model,
               e.usage as LanguageModelUsage | undefined,
               now() - started,
@@ -375,7 +388,7 @@ export function createGateway(env: LlmEnv, options: GatewayOptions = {}): LlmGat
           const error = toLlmError(e);
           report({
             purpose: o.purpose,
-            usage: toUsage(model, undefined, now() - started),
+            usage: toUsage(adapter.name, model, undefined, now() - started),
             ok: false,
             errorCode: error.code,
             conversationId: o.conversationId,

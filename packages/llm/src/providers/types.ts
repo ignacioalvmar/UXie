@@ -13,7 +13,7 @@ export interface ProviderAdapter {
   model(modelId: string, purpose: Purpose): LanguageModel;
   /** System content: the stable prefix first, so prefix caching works wherever supported. */
   instructions(p: PromptParts): Instructions;
-  providerOptions(modelId: string, purpose: Purpose): ProviderOptions | undefined;
+  providerOptions(modelId: string, purpose: Purpose, p: PromptParts): ProviderOptions | undefined;
   /** `native`: provider JSON-schema output. `json_prompt`: JSON-only instructions + zod parse. */
   readonly structuredMode: "native" | "json_prompt";
 }

@@ -134,3 +134,16 @@ Decision:
 - The guide is serialised with a deterministic YAML emitter in core (`toYaml`), keeping the cached prefix byte-stable and the tutor package free of a YAML dependency.
 - `usage_daily` days are UTC dates.
   Consequences: Covered by `packages/tutor/src/__tests__` (integration + 19 golden prompt snapshots).
+
+## ADR-020 Multi-provider, instructor-managed inference settings · 2026-10-03 · accepted
+
+Context: The owner wants to use OpenAI and Gemini as well as Anthropic, and to select models and enter API keys from the app rather than redeploying with new env vars. This amends PRD §7/§8.3 ("switching provider requires only env changes") and FR-9.4.
+Decision:
+
+- Providers: `anthropic`, `openai` (Responses API via `@ai-sdk/openai`), `google` (Gemini), `openai_compatible`, `mock`.
+- One `LlmSettings` object (packages/core) drives the gateway: provider + model **per role** (tutor, state, judge), credentials per provider, effort, cache TTL, temperature, output budget, tutor context window, timeout, prices. Mixed setups are allowed (e.g. Claude tutor + Gemini Flash assessment).
+- Sources: the instructor's saved settings (FR-9.6, built in M5 because that is when instructor auth exists), else env (`llmSettingsFromEnv`). The web app caches the effective settings for 60 s.
+- Keys typed into the app are encrypted with AES-256-GCM using `SETTINGS_ENCRYPTION_KEY` (env only), bound to their row via associated data, stored in `llm_credentials` with no RLS read access, and only ever leave the server as "key set …abcd" (FR-9.7). Chosen over Supabase Vault to stay portable and testable without a database; implemented in `packages/db/src/secrets.ts`.
+- Per-provider behaviour lives in adapters: OpenAI always `store: false`, `promptCacheKey` from the stable prefix, no temperature and `reasoningEffort` for reasoning models; Gemini gets `thinkingLevel` on 3+ models; Anthropic as in ADR-018.
+- The model catalog suggests models but is not a whitelist. Claude prices/context windows are filled in from Anthropic's model reference; OpenAI/Gemini prices and context windows are left for the instructor to enter rather than guessed.
+  Consequences: Any configured provider is a subprocessor (privacy notice, DPA). A provider/model change should be followed by an eval run (§13) before students use it; the settings page reminds the instructor. Losing `SETTINGS_ENCRYPTION_KEY` means re-entering keys, not data loss.

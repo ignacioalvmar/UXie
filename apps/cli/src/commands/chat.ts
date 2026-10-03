@@ -4,7 +4,8 @@ import { parse as parseYaml } from "yaml";
 import {
   BaseEnvSchema,
   Mode,
-  describeEnv,
+  describeLlmSettings,
+  llmSettingsFromEnv,
   parseEnv,
   progressView,
   type LearnerState,
@@ -16,7 +17,7 @@ import {
   MODE_LABEL,
   TutorEngine,
   TutorError,
-  tutorConfigFromEnv,
+  tutorConfig,
   type TurnStream,
 } from "@uxie/tutor";
 import {
@@ -82,6 +83,8 @@ function usageLine(e: UsageEvent): string {
 export async function chatCommand(target: string, opts: ChatOptions): Promise<void> {
   if (opts.provider) process.env.LLM_PROVIDER = opts.provider;
   const env = parseEnv(BaseEnvSchema, process.env);
+  // Database-stored settings (FR-9.6) are used by the web app; the CLI reads env.
+  const settings = llmSettingsFromEnv(env);
   const mode = Mode.parse(opts.mode);
 
   const dir = resolveFixtureDir(target);
@@ -94,7 +97,7 @@ export async function chatCommand(target: string, opts: ChatOptions): Promise<vo
 
   const turnUsage: UsageEvent[] = [];
   let sessionCost = 0;
-  const llm = createGateway(env, {
+  const llm = createGateway(settings, {
     onUsage: (e) => {
       turnUsage.push(e);
       sessionCost += e.usage.costEur;
@@ -118,7 +121,7 @@ export async function chatCommand(target: string, opts: ChatOptions): Promise<vo
     profiles,
     usage: new InMemoryUsageRepo(),
     prompts: loadPromptDir(promptsDir),
-    config: tutorConfigFromEnv(env),
+    config: tutorConfig(env, settings),
     logger: {
       debug: () => {},
       info: () => {},
@@ -138,11 +141,11 @@ export async function chatCommand(target: string, opts: ChatOptions): Promise<vo
     }).id;
   let conversationId = newConversation(mode);
 
-  const info = describeEnv(env);
+  const info = describeLlmSettings(settings);
   console.log(bold(`\nUXie · ${paper.title}`));
   console.log(
     dim(
-      `${paper.pageCount} pages · provider ${info.provider} · tutor ${info.tutorModel} · state ${info.stateModel} · mode ${MODE_LABEL[mode]}`,
+      `${paper.pageCount} pages · tutor ${info.tutor} · state ${info.state} · mode ${MODE_LABEL[mode]}`,
     ),
   );
   console.log(dim(HELP));

@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { LlmError, type LlmEnv } from "../types";
+import type { ProviderCredential } from "@uxie/core";
+import { LlmError } from "../types";
 import { joinedInstructions, type ProviderAdapter } from "./types";
 
 /**
@@ -9,14 +10,18 @@ import { joinedInstructions, type ProviderAdapter } from "./types";
  * servers lack JSON-schema output.
  */
 export function openaiCompatibleAdapter(
-  env: LlmEnv,
+  cred: ProviderCredential | undefined,
   fetch?: typeof globalThis.fetch,
 ): ProviderAdapter {
-  if (!env.LLM_BASE_URL) throw new LlmError("provider_error", "LLM_BASE_URL is required");
+  if (!cred?.baseUrl)
+    throw new LlmError(
+      "provider_error",
+      "A base URL is required for the OpenAI-compatible provider",
+    );
   const provider = createOpenAICompatible({
     name: "openai_compatible",
-    baseURL: env.LLM_BASE_URL,
-    apiKey: env.LLM_API_KEY,
+    baseURL: cred.baseUrl,
+    apiKey: cred.apiKey,
     includeUsage: true,
     fetch,
   });

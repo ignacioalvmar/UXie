@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { BaseEnvSchema, parseEnv } from "@uxie/core";
+import { BaseEnvSchema, llmSettingsFromEnv, parseEnv } from "@uxie/core";
 import {
   createGateway,
   defaultMockResponder,
@@ -54,7 +54,7 @@ export function makeHarness(
   const usageEvents: UsageEvent[] = [];
   let responder: MockResponder = defaultMockResponder;
   const env = parseEnv(BaseEnvSchema, { LLM_PROVIDER: "mock", ...opts.env });
-  const llm = createGateway(env, {
+  const llm = createGateway(llmSettingsFromEnv(env), {
     mockResponder: (call) => {
       calls.push(call);
       return responder(call);

@@ -1,18 +1,22 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import type { SystemModelMessage } from "ai";
+import type { LlmSettings, ProviderCredential } from "@uxie/core";
 import { acceptsEffort } from "../capabilities";
-import type { LlmEnv } from "../types";
 import type { ProviderAdapter } from "./types";
 
 /**
- * Anthropic (default provider, ADR-012). Two system blocks: the stable prefix carries the cache
- * breakpoint (TTL from LLM_CACHE_TTL); the dynamic part follows uncached. Adaptive thinking stays
- * at the model default; `effort` is sent only for tutor replies and only to models that accept it.
+ * Anthropic (ADR-012). Two system blocks: the stable prefix carries the cache breakpoint (TTL
+ * from settings); the dynamic part follows uncached. Adaptive thinking stays at the model
+ * default; `effort` is sent only for tutor replies and only to models that accept it.
  */
-export function anthropicAdapter(env: LlmEnv, fetch?: typeof globalThis.fetch): ProviderAdapter {
-  const provider = createAnthropic({ apiKey: env.LLM_API_KEY, fetch });
+export function anthropicAdapter(
+  cred: ProviderCredential | undefined,
+  settings: LlmSettings,
+  fetch?: typeof globalThis.fetch,
+): ProviderAdapter {
+  const provider = createAnthropic({ apiKey: cred?.apiKey, fetch });
   const cacheControl =
-    env.LLM_CACHE_TTL === "1h" ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" };
+    settings.cacheTtl === "1h" ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" };
   return {
     name: "anthropic",
     structuredMode: "native",
@@ -30,7 +34,7 @@ export function anthropicAdapter(env: LlmEnv, fetch?: typeof globalThis.fetch): 
     },
     providerOptions: (modelId, purpose) =>
       purpose === "tutor" && acceptsEffort("anthropic", modelId)
-        ? { anthropic: { effort: env.LLM_EFFORT } }
+        ? { anthropic: { effort: settings.effort } }
         : undefined,
   };
 }

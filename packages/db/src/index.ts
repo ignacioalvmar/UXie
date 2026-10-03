@@ -1,2 +1,2 @@
-// Implemented in a later milestone (see docs/PRD.md §16).
-export {};
+// Supabase repositories arrive in M5 (PRD §16). Secrets encryption is used by the settings store.
+export * from "./secrets";

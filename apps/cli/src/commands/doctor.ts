@@ -1,5 +1,13 @@
-import { BaseEnvSchema, describeEnv, parseEnv, resolveModels } from "@uxie/core";
-import { createGateway } from "@uxie/llm";
+import {
+  BaseEnvSchema,
+  LLM_ROLES,
+  PROVIDER_LABEL,
+  describeLlmSettings,
+  llmSettingsFromEnv,
+  llmSettingsProblems,
+  parseEnv,
+} from "@uxie/core";
+import { catalogEntry, createGateway, type Purpose } from "@uxie/llm";
 import { BASE_PROMPT_FILES, loadPromptDir } from "@uxie/tutor";
 import { promptsDir } from "../paths";
 
@@ -13,6 +21,13 @@ const REQUIRED_PROMPTS = [
   "guide_draft.md",
 ];
 
+/** One purpose per role, for pinging each configured provider/model. */
+const ROLE_PURPOSE: Record<(typeof LLM_ROLES)[number], Purpose> = {
+  tutor: "tutor",
+  state: "summary",
+  judge: "eval_judge",
+};
+
 /** `pnpm uxie doctor` (PRD §10.10). Exit code 1 if anything is wrong. */
 export async function doctorCommand(opts: { ping?: boolean }): Promise<void> {
   let ok = true;
@@ -22,7 +37,9 @@ export async function doctorCommand(opts: { ping?: boolean }): Promise<void> {
   };
 
   const env = parseEnv(BaseEnvSchema, process.env); // throws EnvError → reported by the caller
-  console.log(`✓ env       ${JSON.stringify(describeEnv(env))}`);
+  const settings = llmSettingsFromEnv(env);
+  console.log(`✓ env       ${JSON.stringify(describeLlmSettings(settings))}`);
+  for (const p of llmSettingsProblems(settings)) fail("llm", p);
 
   try {
     const prompts = loadPromptDir(promptsDir);
@@ -34,34 +51,45 @@ export async function doctorCommand(opts: { ping?: boolean }): Promise<void> {
     fail("prompts", (e as Error).message);
   }
 
-  const models = resolveModels(env);
-  const unpriced = [...new Set([models.tutor, models.state])].filter(
-    (m) => !env.LLM_PRICES_JSON[m],
-  );
-  if (env.LLM_PROVIDER !== "mock" && unpriced.length) {
+  for (const role of LLM_ROLES) {
+    const { provider, model } = settings.roles[role];
+    if (provider === "mock" || settings.prices[model]) continue;
+    const known = catalogEntry(provider, model)?.price;
     console.log(
-      `! prices    no LLM_PRICES_JSON entry for ${unpriced.join(", ")}; costs will show as €0`,
+      known
+        ? `! prices    ${model} (${role}) has no LLM_PRICES_JSON entry; catalog price would be ${JSON.stringify(known)}`
+        : `! prices    ${model} (${role}) has no price; costs will show as €0 until one is set`,
     );
-  } else console.log("✓ prices    configured");
+  }
 
   if (opts.ping) {
-    try {
-      const llm = createGateway(env);
-      const { text, usage } = await llm.stream(
-        {
-          stablePrefix: "Reply with the single word OK.",
-          dynamicSystem: "",
-          messages: [{ role: "user", content: "ping" }],
-        },
-        { purpose: "summary", maxTokens: 50 },
-      ).done;
-      console.log(
-        `✓ provider  ${usage.provider}/${usage.model} answered "${text.trim().slice(0, 20)}" in ${usage.latencyMs}ms`,
-      );
-    } catch (e) {
-      fail("provider", `${(e as { code?: string }).code ?? "error"}: ${(e as Error).message}`);
+    const llm = createGateway(settings);
+    const seen = new Set<string>();
+    for (const role of LLM_ROLES) {
+      const { provider, model } = settings.roles[role];
+      if (seen.has(`${provider}:${model}`)) continue;
+      seen.add(`${provider}:${model}`);
+      try {
+        const { text, usage } = await llm.stream(
+          {
+            stablePrefix: "Reply with the single word OK.",
+            dynamicSystem: "",
+            messages: [{ role: "user", content: "ping" }],
+          },
+          { purpose: ROLE_PURPOSE[role], maxTokens: 200 },
+        ).done;
+        console.log(
+          `✓ ${role.padEnd(9)} ${PROVIDER_LABEL[provider]} ${model} answered "${text.trim().slice(0, 20)}" in ${usage.latencyMs}ms`,
+        );
+      } catch (e) {
+        fail(
+          role,
+          `${PROVIDER_LABEL[provider]} ${model}: ${(e as { code?: string }).code ?? "error"}: ${(e as Error).message}`,
+        );
+      }
     }
-  } else console.log("- provider  skipped (add --ping to send one tiny request)");
+  } else
+    console.log("- provider  skipped (add --ping to send one tiny request per provider/model)");
 
   console.log("- database  checked from M5");
   if (!ok) process.exitCode = 1;

@@ -49,3 +49,21 @@ tests on the mock provider, golden prompt snapshots in `packages/tutor/src/__tes
 
 Last run: 2026-10-03, steps 1 and 3 (offline; Ollama on this machine is CPU-only with a 4k context
 and timed out, which exercised the timeout path). Step 2 pending an API key.
+
+### M2 addendum: OpenAI and Gemini (ADR-020)
+
+Automated: request bodies for OpenAI (`store: false`, `prompt_cache_key`, no temperature on
+reasoning models, `reasoning.effort`) and Gemini (`systemInstruction`, `thinkingLevel`,
+JSON output, cache reads) against fake APIs; mixed-provider routing; settings redaction and
+update semantics; key encryption round-trip and tamper detection.
+
+With real keys:
+
+1. OpenAI only: `LLM_PROVIDER=openai LLM_API_KEY=sk-… LLM_TUTOR_MODEL=gpt-5.5 LLM_STATE_MODEL=gpt-5.4-mini`
+   → `pnpm uxie doctor --ping` (both roles answer), then `pnpm uxie chat visible-cues --debug`;
+   `cached` > 0 from turn 2 once the prefix exceeds 1024 tokens.
+2. Gemini only: `LLM_PROVIDER=google LLM_API_KEY=… LLM_TUTOR_MODEL=gemini-3.8-flash LLM_STATE_MODEL=gemini-3.5-flash-lite`.
+3. Mixed: `LLM_PROVIDER=anthropic LLM_API_KEY=sk-ant-… LLM_STATE_PROVIDER=google GEMINI_API_KEY=…
+LLM_STATE_MODEL=gemini-3.5-flash-lite` → the debug lines show `tutor … anthropic` and
+   `assessment … google`.
+   Set `LLM_PRICES_JSON` entries for OpenAI/Gemini models, or costs show €0.

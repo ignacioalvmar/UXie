@@ -9,6 +9,7 @@ import {
   type Citation,
   type HelpLevel,
   type LearnerState,
+  type LlmSettings,
   type Mode,
   type TurnEvent,
   type TurnFlags,
@@ -49,17 +50,18 @@ export interface TutorConfig {
   temperature?: number;
 }
 
-export function tutorConfigFromEnv(env: BaseEnv): TutorConfig {
+/** Tutor behaviour from env; model-dependent values (context window, output budget) from the LLM settings. */
+export function tutorConfig(env: BaseEnv, llm: LlmSettings): TutorConfig {
   return {
     stuckThreshold: env.STUCK_THRESHOLD,
     historyTurns: env.HISTORY_TURNS,
     tutorLanguage: env.TUTOR_LANGUAGE,
     contextStrategy: env.CONTEXT_STRATEGY,
-    contextWindow: env.LLM_CONTEXT_WINDOW,
+    contextWindow: llm.contextWindow,
     retrievalMaxPages: env.RETRIEVAL_MAX_PAGES,
     assessmentTimeoutMs: env.ASSESSMENT_TIMEOUT_MS,
-    maxOutputTokens: env.LLM_MAX_OUTPUT_TOKENS,
-    temperature: env.LLM_TEMPERATURE,
+    maxOutputTokens: llm.maxOutputTokens,
+    temperature: llm.temperature,
   };
 }
 

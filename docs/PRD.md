@@ -1,7 +1,7 @@
 # UXie: Product Requirements Document (Unified)
 
-**Version:** 2.1, unified from the Claude (v1.0), ChatGPT (v1.1) and Gemini (v3.0) PRDs. See `PRD_Comparison.md`.
-**Changelog:** v2.1 (2026-10-03): hosting set to Vercel + Render + Supabase EU + Namecheap domain (ADR-011); default inference Anthropic Sonnet 5.5 / Haiku 4.5 (ADR-012); ingestion moved to a Render worker with direct-to-Storage uploads; email domains confirmed; cost estimate added (§17.4).
+**Version:** 2.2, unified from the Claude (v1.0), ChatGPT (v1.1) and Gemini (v3.0) PRDs. See `PRD_Comparison.md`.
+**Changelog:** v2.2 (2026-10-03): OpenAI and Google Gemini added as first-class providers next to Anthropic; provider and model chosen **per role** (tutor, state, judge); the instructor selects models and enters API keys on an **AI provider settings** page (FR-9.6), keys stored encrypted (FR-9.7); env remains the bootstrap source (ADR-020). v2.1 (2026-10-03): hosting set to Vercel + Render + Supabase EU + Namecheap domain (ADR-011); default inference Anthropic Sonnet 5.5 / Haiku 4.5 (ADR-012); ingestion moved to a Render worker with direct-to-Storage uploads; email domains confirmed; cost estimate added (§17.4).
 **Date:** 2026-10-03
 **Product owner:** Prof. Ignacio Alvarez, THI (confirm data controller, see §19)
 **Launch:** Winter semester 2026/27 pilot (≈30 UXD vibecoding students)
@@ -327,6 +327,7 @@ Browser ↔ Vercel only. The worker has no public endpoint; it talks to Supabase
 | 010 | Short background work (history summaries, analytics) via Next.js `after()`; long work (ingestion) via DB job rows claimed by a Render worker; **no queue infrastructure** |
 | 011 | **Hosting:** Vercel (`fra1`) for `apps/web`; Render (Frankfurt) for `apps/worker` (+ optional docling, P2 Discord); Supabase EU; custom domain via Namecheap DNS |
 | 012 | **Default inference: Anthropic API**: Sonnet 5.5 as tutor, Haiku 4.5 for assessment/summaries; other providers remain env-switchable and are compared in the M4 benchmark |
+| 020 | **Multi-provider, instructor-managed inference settings**: Anthropic, OpenAI, Google Gemini (+ OpenAI-compatible); provider + model per role; instructor edits them on `/admin/settings/ai`; keys AES-256-GCM-encrypted in the database; env is the fallback |
 
 ### 4.3 Module boundaries & dependency rules (enforced)
 | Package | May import | Must NOT import |
@@ -372,7 +373,7 @@ On provider error: retry once with backoff (only if no tokens were streamed yet)
 | UI | Tailwind CSS + shadcn/ui (Radix primitives for accessibility); `react-markdown` + `remark-gfm` for messages |
 | PDF viewing | `react-pdf` (pdf.js) with text layer |
 | LLM | Vercel AI SDK (`ai` core): `streamText` for replies; structured output (`generateObject` / `generateText` with `Output.object`, whichever is current) for assessment, guide drafting, judging |
-| Providers | **Default: `@ai-sdk/anthropic`**: tutor `claude-sonnet-5-5`, state/assessment `claude-haiku-4-5`, judge `claude-sonnet-5-5` or a different-vendor model. Also: `@ai-sdk/openai-compatible` (Ollama/LM Studio for free local development; GWDG/Academic Cloud if eligibility is confirmed; any OpenAI-compatible endpoint), `@ai-sdk/google` (paid tier only) |
+| Providers | **Default: `@ai-sdk/anthropic`**: tutor `claude-sonnet-5-5`, state/assessment `claude-haiku-4-5`, judge `claude-sonnet-5-5` or a different-vendor model. Also first-class: `@ai-sdk/openai` (OpenAI Responses API, `store: false`) and `@ai-sdk/google` (Gemini, paid tier only); `@ai-sdk/openai-compatible` (Ollama/LM Studio for free local development; GWDG/Academic Cloud if eligibility is confirmed; any OpenAI-compatible endpoint). Provider and model are chosen per role (tutor / state / judge) on the instructor's settings page (FR-9.6) |
 | Validation | `zod` everywhere (env, API bodies, LLM outputs, guide, state) |
 | DB / Auth / Files | Supabase: Postgres 15+, Auth (email + password), Storage (private bucket); `@supabase/ssr`, `@supabase/supabase-js`; Supabase CLI for local dev & migrations |
 | PDF extraction | `unpdf` (pdf.js text per page), default; optional `docling-serve` container behind the same `Extractor` interface |
@@ -477,7 +478,7 @@ uxie/
 
 ## 7. Configuration
 
-All variables are validated at boot by a zod schema (`apps/web/lib/env.ts`, shared helper in `core`). The app refuses to start on invalid config. **Switching provider requires only env changes.**
+All variables are validated at boot by a zod schema (`apps/web/lib/env.ts`, shared helper in `core`). The app refuses to start on invalid config. **Switching provider requires no code change:** the LLM variables below are the bootstrap/development source of the inference settings (`LlmSettings`, `packages/core/src/llmSettings.ts`); once the instructor saves the AI provider settings page (FR-9.6), the encrypted database settings take precedence (ADR-020).
 
 ```dotenv
 # ── App ───────────────────────────────────────────────
@@ -495,9 +496,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=                              # server only; never exposed to the browser
 
 # ── LLM provider ──────────────────────────────────────
-LLM_PROVIDER=anthropic                            # anthropic | openai_compatible | google | mock
+LLM_PROVIDER=anthropic                            # anthropic | openai | google | openai_compatible | mock (all roles)
+LLM_STATE_PROVIDER=                               # optional: provider for assessment + summaries (default LLM_PROVIDER)
+LLM_JUDGE_PROVIDER=                               # optional: provider for the eval judge (default LLM_PROVIDER)
 LLM_BASE_URL=                                     # openai_compatible only, e.g. http://localhost:11434/v1 (Ollama, dev)
-LLM_API_KEY=                                      # Anthropic API key (prod: set in Vercel + Render env, never in git)
+LLM_API_KEY=                                      # key of LLM_PROVIDER (prod: set in Vercel + Render env, never in git)
+ANTHROPIC_API_KEY=                                # keys of providers used only by other roles (mixed setups)
+OPENAI_API_KEY=
+GEMINI_API_KEY=                                   # Gemini paid tier only (NFR-2)
+SETTINGS_ENCRYPTION_KEY=                          # 32 bytes base64; encrypts API keys saved on /admin/settings/ai (FR-9.7). Vercel + Render only
 LLM_TUTOR_MODEL=claude-sonnet-5-5                 # main reply model
 LLM_STATE_MODEL=claude-haiku-4-5                  # assessment + summaries; defaults to LLM_TUTOR_MODEL
 LLM_JUDGE_MODEL=claude-sonnet-5-5                 # eval judge; prefer a different model/vendor when available
@@ -666,8 +673,10 @@ export interface LlmGateway {
   structured<T>(p: PromptParts, schema: z.ZodType<T>, o: { purpose: Purpose; model?: string; timeoutMs?: number }):
     Promise<{ value: T; usage: Usage }>;   // one repair retry with the validation error appended
 }
-export function createGateway(env: LlmEnv): LlmGateway;
+export function createGateway(settings: LlmSettings): LlmGateway;   // LlmSettings: §8.3a; modelFor(purpose) → { provider, model }
 ```
+
+**8.3a Inference settings (`LlmSettings`, packages/core).** `roles: { tutor, state, judge }`, each `{ provider, model }`; `credentials` per provider (`apiKey`, `baseUrl`; server-only secrets); `effort`, `cacheTtl`, `temperature?`, `maxOutputTokens`, `contextWindow` (of the tutor model), `timeoutMs`, `prices` (USD/MTok per model), `usdToEur`. Purposes map to roles: tutor/guide_draft/eval_student → `tutor`; assessment/summary/report → `state`; eval_judge → `judge`. Sources, in order: the instructor's saved settings (FR-9.6), else `llmSettingsFromEnv(env)`. `redactLlmSettings()` is the only form that may leave the server (keys replaced by `hasApiKey` + last four characters). Each provider's adapter is created on first use.
 - **openai_compatible:** one system message = `stablePrefix + "\n\n" + dynamicSystem` (prefix first so automatic prefix caching works where supported). If the endpoint lacks JSON-schema output, `structured()` falls back to "JSON only" instructions + zod parse + one repair retry.
 - **anthropic** (default provider):
   - Two system blocks. The first (`stablePrefix`) carries the cache-control marker (`{ type: "ephemeral" }`, plus `ttl: "1h"` when `LLM_CACHE_TTL=1h`) via the AI SDK Anthropic provider options. Log cache reads and cache writes separately from provider metadata. The cost calculation must price cache writes (1.25× input for 5 m, 2× for 1 h) and reads (0.1×) correctly.
@@ -676,7 +685,8 @@ export function createGateway(env: LlmEnv): LlmGateway;
   - Assessment on `claude-haiku-4-5` uses structured output. Haiku 4.5 caches only prefixes ≥ 4096 tokens, so put the guide (stable) before state + messages and expect caching only when the guide is long enough.
   - Handle `stop_reason: "refusal"` as a distinct non-retryable error code (`provider_refusal`). The student sees a neutral message; the event is logged for instructor review.
   - Data region: Anthropic's first-party API offers inference geography `us` or `global`, **not EU**. If EU-only processing becomes a requirement, switch to Claude on Google Vertex AI with an EU region (ADR + re-run eval) or to an EU-hosted OpenAI-compatible provider.
-- **google:** system instruction = prefix + dynamic; implicit caching. Paid tier only (documented in README).
+- **openai** (Responses API): one system/developer message, prefix first (automatic caching of identical prefixes ≥ 1024 tokens); `promptCacheKey` = hash of the stable prefix so turns on the same paper hit the same cache; **`store: false`** on every call (responses not retained for later retrieval, NFR-1). Reasoning models (o-series, GPT-5+ except `*-chat-*`) get no `temperature` and receive `reasoningEffort` from `effort` for tutor replies (`max` → `high` before GPT-6). JSON-schema structured output with our own zod validation and repair.
+- **google:** system instruction = prefix + dynamic; implicit caching (cache reads reported). Gemini 3+ tutor replies get `thinkingLevel` from `effort` (`max` → `high`). Paid tier only (NFR-2).
 - **mock:** deterministic scripted outputs from a queue or a function (built on the AI SDK mock language model from `ai/test`). Used by all automated tests.
 - Every call is reported to an `onUsage(purpose, usage, conversationId?)` callback, which the adapter wires to `LlmCallRepo`.
 - **Never** include email, display name, or user IDs in any prompt. Refer to "the student".
@@ -984,6 +994,24 @@ create table export_log (
   created_at timestamptz not null default now()
 );
 
+-- Inference settings edited on /admin/settings/ai (FR-9.6, ADR-020). Singleton row.
+create table llm_settings (
+  id boolean primary key default true check (id),
+  config jsonb not null,                         -- LlmSettings without credentials (roles, effort, prices, …)
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now()
+);
+
+-- Provider API keys (FR-9.7). Never readable through RLS; only the server (secret key) reads them.
+create table llm_credentials (
+  provider text primary key check (provider in ('anthropic','openai','google','openai_compatible')),
+  api_key_sealed text,                           -- AES-256-GCM with SETTINGS_ENCRYPTION_KEY, AAD 'llm_credentials:<provider>'
+  key_hint text,                                 -- last four characters, shown on the settings page
+  base_url text,                                 -- openai_compatible only
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now()
+);
+
 -- Profile auto-creation
 create function public.handle_new_user() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
@@ -1012,6 +1040,8 @@ RLS is **enabled on every table**. The **server** performs all writes using the 
 | conversations / messages | select own | select all | writes by server only |
 | feedback | select/insert own (insert via server) | select all | |
 | llm_calls, ingest_jobs, export_log, events, deletion_ledger, worker_heartbeats | none | select | |
+| llm_settings | none | select | writes via server action after `is_instructor()` check |
+| **llm_credentials** | **none** | **none** | ciphertext only; read and written exclusively by the server with the secret key |
 | data_requests | select own | all | |
 | usage_daily | select own | select all | |
 
@@ -1104,8 +1134,10 @@ Include an automated RLS test suite (§15) that signs in as student A, student B
 - **FR-9.1** Provider/model chosen only through env; boot logs (without secrets) the provider, models, context window, and strategy.
 - **FR-9.2** Limits checked before each turn: per-minute and daily per student (`usage_daily`), monthly spend ceiling (sum of `llm_calls.cost_eur` this calendar month). Exceeding → HTTP 429/503 with machine-readable `code` and human message.
 - **FR-9.3** Timeouts: `LLM_TIMEOUT_MS` for replies, `ASSESSMENT_TIMEOUT_MS` for assessment. One retry with jittered backoff for 429/5xx before the first token.
-- **FR-9.4** No silent fallback to another provider. A fallback provider may be configured only as an explicit env change.
+- **FR-9.4** No silent fallback to another provider. A fallback provider may be configured only as an explicit change by the instructor (settings page) or operator (env).
 - **FR-9.5** `/api/health` (unauthenticated, no details): DB reachable; `/api/admin/health` (instructor): DB, Storage, LLM ping (cached 60 s), last error, **worker heartbeat** (the worker upserts `worker_heartbeats(name, last_seen_at)` every poll; stale > 2 min → shown red). `worker_heartbeats` is instructor-select only under RLS.
+- **FR-9.6** (P0) **AI provider settings** at `/admin/settings/ai` (instructor only). For each role — *Tutor replies*, *Assessment & summaries*, *Eval judge* — choose a provider (Anthropic, OpenAI, Google Gemini, OpenAI-compatible endpoint) and a model from a suggestion list (`MODEL_CATALOG`) or a custom model id. Edit effort, cache TTL, max output tokens, tutor context window, temperature (disabled with an explanation for models that reject it), and per-model prices (pre-filled where known; costs show €0 until set). Per provider: an API key field (write-only; shows "key set …abcd" and *Replace* / *Remove*) and, for OpenAI-compatible, a base URL. **Test connection** sends one tiny request per configured role before saving and shows success, latency, or the error. Saving validates (`llmSettingsProblems`: every used provider needs a key / base URL), writes an `events` row `llm_settings_changed` (roles and which providers' keys changed; never key values), and takes effect for new turns within 60 s (server-side cache). The page reminds the instructor that a provider/model change should be followed by an eval run (§13, §17.2) and that the provider must be listed in the privacy notice (NFR-2); it warns that free tiers which train on inputs are prohibited.
+- **FR-9.7** (P0) **Key storage.** API keys entered on the settings page are encrypted with AES-256-GCM (`SETTINGS_ENCRYPTION_KEY`, 32 bytes, set only in Vercel/Render env; associated data binds each ciphertext to its provider row) and stored in `llm_credentials`, which has no RLS read access for anyone. Keys are decrypted only on the server when building the gateway, never logged, never returned to any browser, and not included in data exports or backups' plaintext. Rotating `SETTINGS_ENCRYPTION_KEY` requires re-entering the keys (the settings page says so when decryption fails). Env keys remain a fallback for providers without a stored key.
 
 ### 10.10 CLI (`pnpm uxie …`) (P0)
 | Command | Purpose |
@@ -1162,6 +1194,9 @@ All JSON bodies validated with zod; all errors `{ code: string, message: string 
 | `POST /api/admin/exports` | `{ filters, format, researchOnly }` | file download |
 | `GET/PATCH /api/admin/data-requests[/:id]` | | |
 | `GET /api/admin/usage` | `?month=` | cost & latency metrics |
+| `GET /api/admin/settings/ai` | – | `RedactedLlmSettings` (no keys) + `MODEL_CATALOG` + current problems |
+| `PUT /api/admin/settings/ai` | `LlmSettingsUpdate` (key fields: omitted = keep, `null` = remove, string = replace) | redacted settings |
+| `POST /api/admin/settings/ai/test` | `LlmSettingsUpdate` (unsaved draft) | per role: `{ ok, latencyMs, errorCode? }` |
 
 The chat client uses the AI SDK `useChat` hook configured to send **only the latest message** (`prepareSendMessagesRequest`). The server always loads history from the DB, never trusting client-sent history.
 
@@ -1346,7 +1381,7 @@ At least 3 papers in `fixtures/papers/` (one classic HCI/UX paper or chapter exc
 
 ### 14.1 Privacy & GDPR
 - **NFR-1** Data minimisation: email only in `auth.users`; everything else keyed by `profiles.id` and exported by `pseudonym_id`. Never send email, names or IDs to the LLM.
-- **NFR-2** Hosting in the EU where configurable: Supabase EU (Frankfurt), Vercel functions `fra1`, Render Frankfurt. Vercel, Render, Supabase, the email provider and Anthropic are subprocessors. Sign/accept each one's DPA and list them (with processing regions; Anthropic inference is `us`/`global`) in the privacy notice. LLM provider approved by the owner (data processing terms, retention, no training on inputs). **Free tiers whose terms allow training on inputs are prohibited.**
+- **NFR-2** Hosting in the EU where configurable: Supabase EU (Frankfurt), Vercel functions `fra1`, Render Frankfurt. Vercel, Render, Supabase, the email provider and every LLM provider configured on the settings page (Anthropic by default; OpenAI and/or Google if selected) are subprocessors. Sign/accept each one's DPA and list them (with processing regions; Anthropic inference is `us`/`global`) in the privacy notice. LLM provider approved by the owner (data processing terms, retention, no training on inputs). **Free tiers whose terms allow training on inputs are prohibited.**
 - **NFR-3** Research use only for consenting students; consent versioned and revocable; research exports pseudonymous.
 - **NFR-4** Logs never include message content, passwords, tokens or emails at any level ≥ `info`. `debug` content logging is disabled in production by config guard.
 - **NFR-5** Use synthetic data only in development (seed script); separate Supabase projects for dev and production.
@@ -1429,10 +1464,11 @@ Monorepo, TS strict configs, ESLint/Prettier, dependency-cruiser rules (§4.3), 
 - ✅ **Gate:** the instructor records ADR "Production inference provider" with scorecard links. Prompts are tuned until the eval thresholds in §1.6 are met on the chosen provider (re-run documented).
 
 ### M5: Data layer & authentication
-Supabase migrations (§9), RLS, storage, `db` repos implementing ports, generated types, Next.js app shell, auth pages, Auth hook for domains, onboarding (privacy + consent), `/account` basics, `role set`.
-- ✅ RLS test suite passes (incl. guides invisible to students).
+Supabase migrations (§9), RLS, storage, `db` repos implementing ports, generated types, Next.js app shell, auth pages, Auth hook for domains, onboarding (privacy + consent), `/account` basics, `role set`, **AI provider settings page** (FR-9.6, FR-9.7: settings store, key encryption, effective-settings resolution with 60 s cache, test connection).
+- ✅ RLS test suite passes (incl. guides invisible to students; `llm_credentials` unreadable by students *and* instructors through RLS).
 - ✅ Register with allowed domain → verify (local mail catcher) → onboarding → library shell; disallowed domain rejected by both server action and hook.
 - ✅ Password reset works end to end locally.
+- ✅ Instructor switches the tutor role from Anthropic to OpenAI or Gemini on `/admin/settings/ai`, enters a key, *Test connection* succeeds, saves; the next test-chat turn uses the new provider (visible in the debug panel) with no redeploy. The key never appears in any HTTP response, log line or `events` row (asserted by a test); the DB column holds only ciphertext.
 
 ### M6: Student library & workspace
 Library, workspace with PDF viewer + accessible text, chat streaming via engine + db repos, citations → PDF jump, starter chips, persistence/resume, `/conversations`, limits (per-minute, daily, spend ceiling), generation lock, idempotent retry, error states, mobile tabs.
@@ -1595,6 +1631,7 @@ Agents proceed with the **default**. The owner confirms or changes the default b
 | D13 | Domain & subdomain | `uxie.<owner's Namecheap domain>`; sender `auth@<domain>` | M0 (preview), M10 (prod) |
 | D14 | Vercel / Render / Supabase plans | Vercel Pro (function duration + commercial-use terms), Render Starter worker, Supabase Pro (daily backups) for production; free tiers for dev | M10 |
 | D15 | Transactional email provider | EU-capable provider (Brevo, or Resend EU region) | M5 |
+| D17 | Providers enabled for the pilot | Anthropic by default; OpenAI and Gemini selectable on `/admin/settings/ai` (ADR-020). Whichever is used in production must pass the M4 eval and be listed in the privacy notice | M4 / M10 |
 | D16 | EU-only LLM processing required? | No: Anthropic first-party (`global`/`us` inference) disclosed in the privacy notice. If yes → Claude via Vertex AI EU region | M4 |
 
 ---

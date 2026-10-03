@@ -1,4 +1,4 @@
-import { BaseEnvSchema, parseEnv } from "@uxie/core";
+import { BaseEnvSchema, llmSettingsFromEnv, parseEnv } from "@uxie/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { LlmError } from "../index";
@@ -13,8 +13,11 @@ import {
   type UsageEvent,
 } from "../index";
 
+const settingsFrom = (vars: Record<string, string>) =>
+  llmSettingsFromEnv(parseEnv(BaseEnvSchema, vars));
+
 const mockEnv = (extra: Record<string, string> = {}) =>
-  parseEnv(BaseEnvSchema, {
+  settingsFrom({
     LLM_PROVIDER: "mock",
     LLM_TUTOR_MODEL: "tutor-m",
     LLM_STATE_MODEL: "state-m",
@@ -47,10 +50,10 @@ describe("gateway with the mock provider", () => {
 
   it("selects the state model for assessment and summary, the tutor model otherwise", () => {
     const gw = createGateway(mockEnv());
-    expect(gw.modelFor("assessment")).toBe("state-m");
-    expect(gw.modelFor("summary")).toBe("state-m");
-    expect(gw.modelFor("tutor")).toBe("tutor-m");
-    expect(gw.modelFor("eval_judge")).toBe("tutor-m");
+    expect(gw.modelFor("assessment")).toEqual({ provider: "mock", model: "state-m" });
+    expect(gw.modelFor("summary").model).toBe("state-m");
+    expect(gw.modelFor("tutor").model).toBe("tutor-m");
+    expect(gw.modelFor("eval_judge").model).toBe("tutor-m");
   });
 
   it("M2 simulated cache: write on the first call, read from the second on", async () => {
@@ -171,7 +174,7 @@ describe("openai_compatible adapter", () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       });
     }) as typeof globalThis.fetch;
-    const env = parseEnv(BaseEnvSchema, {
+    const env = settingsFrom({
       LLM_PROVIDER: "openai_compatible",
       LLM_BASE_URL: "http://localhost:11434/v1",
       LLM_TUTOR_MODEL: "llama",

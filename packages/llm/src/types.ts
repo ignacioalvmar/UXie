@@ -1,4 +1,4 @@
-import type { BaseEnv } from "@uxie/core";
+import type { LlmRole, RoleModel } from "@uxie/core";
 import type { z } from "zod";
 
 /** Why a model is called; selects the default model and limits (PRD §8.3). */
@@ -62,9 +62,20 @@ export interface LlmStream {
   done: Promise<{ text: string; usage: Usage }>;
 }
 
+/** Which settings role serves each purpose (PRD §8.3). */
+export const PURPOSE_ROLE: Record<Purpose, LlmRole> = {
+  tutor: "tutor",
+  guide_draft: "tutor",
+  eval_student: "tutor",
+  assessment: "state",
+  summary: "state",
+  report: "state",
+  eval_judge: "judge",
+};
+
 export interface LlmGateway {
-  readonly provider: string;
-  modelFor(purpose: Purpose): string;
+  /** Provider and model that serve a purpose. */
+  modelFor(purpose: Purpose): RoleModel;
   stream(p: PromptParts, o: StreamOptions): LlmStream;
   /** Validated structured output; one repair retry with the validation error appended. */
   structured<T>(
@@ -73,24 +84,6 @@ export interface LlmGateway {
     o: StructuredOptions,
   ): Promise<{ value: T; usage: Usage }>;
 }
-
-/** The env subset the gateway reads. */
-export type LlmEnv = Pick<
-  BaseEnv,
-  | "LLM_PROVIDER"
-  | "LLM_BASE_URL"
-  | "LLM_API_KEY"
-  | "LLM_TUTOR_MODEL"
-  | "LLM_STATE_MODEL"
-  | "LLM_JUDGE_MODEL"
-  | "LLM_MAX_OUTPUT_TOKENS"
-  | "LLM_EFFORT"
-  | "LLM_TEMPERATURE"
-  | "LLM_CACHE_TTL"
-  | "LLM_TIMEOUT_MS"
-  | "LLM_PRICES_JSON"
-  | "USD_TO_EUR"
->;
 
 export type LlmErrorCode =
   | "provider_refusal"
