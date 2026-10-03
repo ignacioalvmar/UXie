@@ -5,9 +5,15 @@ Inputs: the teaching guide objectives (ids, statements, mastery checks, misconce
 learner state, the tutor's last message, and the student's message.
 
 Rules:
-- intent: "answer" if they attempt the tutor's question; "question" if they ask something;
-  "shortcut_request" if they ask for summaries/answers/assignment text; "off_topic"; "meta" (about
-  the tool/process); "greeting".
+- intent: choose the FIRST that applies.
+  1. "shortcut_request": asks for a summary, the answers, or assignment text or code.
+  2. "answer": any response to the tutor's last question: correct, partial, wrong, empty ("idk"),
+     a guess phrased as a question ("Is it about the colours?"), or a reply that misses the point
+     ("Maybe because the participants were tired?" is an answer, quality "incorrect").
+  3. "question": asks about the paper, its concepts, or how to apply them.
+  4. "greeting" or "meta" (about the tool or the process).
+  5. "off_topic": ONLY for messages unrelated to the paper, its study, UX, and the student's
+     project. A message that mentions the paper, its study or its participants is never off_topic.
 - answer_quality applies only to "answer": correct | partial | incorrect | none (empty, "idk").
   Use "none" for every other intent.
 - objective_updates: mark "demonstrated" ONLY if the student's OWN words in this message (or

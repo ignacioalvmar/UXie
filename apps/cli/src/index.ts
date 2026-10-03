@@ -2,9 +2,12 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { EnvError } from "@uxie/core";
+import { PROFILE_IDS } from "@uxie/eval";
 import { TutorError } from "@uxie/tutor";
 import { chatCommand } from "./commands/chat";
 import { doctorCommand } from "./commands/doctor";
+import { evalCommand } from "./commands/eval";
+import { loadtestCommand } from "./commands/loadtest";
 import { ingestCommand, type IngestCliOptions } from "./commands/ingest";
 import { repoRoot } from "./paths";
 
@@ -100,19 +103,32 @@ program
 
 program
   .command("eval")
-  .argument("<fixture>")
-  .option("--profiles <list>")
-  .option("--runs <n>")
-  .option("--providers <list>")
-  .description("Run simulated students and print a scorecard (PRD §13)")
-  .action(later("M4"));
+  .argument("<fixture>", "fixture slug or folder with pages.json + guide.yaml")
+  .option("--profiles <list>", `comma-separated (default: all): ${PROFILE_IDS.join(", ")}`)
+  .option("--runs <n>", "runs per profile and provider", "2")
+  .option("--turns <n>", "student messages per run", "12")
+  .option(
+    "--providers <list>",
+    "comma-separated <provider>:<model>[@effort][+<provider>:<state-model>] (default: env setup)",
+  )
+  .option("--parallel <n>", "conversations in flight at once", "3")
+  .option("--out <dir>", "output folder (default: eval-results/<date>)")
+  .option("--no-judge", "skip the LLM judge (automatic checks only)")
+  .option("--rescore <json>", "recompute checks and thresholds of a saved report (no model calls)")
+  .description("Run simulated students and write a scorecard (PRD §13)")
+  .action(run(evalCommand));
 
 program
   .command("loadtest")
-  .option("--concurrency <n>", "parallel simulated students", "5")
-  .option("--duration <d>", "e.g. 2m", "2m")
+  .option("--concurrency <list>", "concurrent simulated students, e.g. 5,10,15", "5")
+  .option("--duration <d>", "per concurrency level, e.g. 2m or 90s", "2m")
+  .option("--fixture <slug>", "paper to chat about", "visible-cues")
+  .option("--provider <spec>", "<provider>:<model>[@effort][+<provider>:<state-model>]")
+  .option("--think <d>", "pause between a reply and the next message", "0s")
+  .option("--mock-delay <d>", "with LLM_PROVIDER=mock: delay per model call", "0ms")
+  .option("--out <dir>", "output folder (default: eval-results/<date>)")
   .description("Measure TTFT p95 and error rate under load (§13.4)")
-  .action(later("M4"));
+  .action(run(loadtestCommand));
 
 program
   .command("report")

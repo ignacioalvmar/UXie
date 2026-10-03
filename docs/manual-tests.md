@@ -106,3 +106,45 @@ Last run: 2026-10-03.
   review before it counts as approved.
 - Step 3: not run (no real paper in this checkout).
 - Step 4: pass (identical bytes).
+
+## M4: Evaluation and inference benchmark
+
+Automated (`pnpm check`, mock provider): provider-spec parsing and settings per candidate; every
+LLM-played profile has a prompt section; the scripted Confused profile reaches
+`ask → hint 1 → hint 2 → explain → check`; a leaking reply fails the Jailbreaker run and the
+no-leakage threshold; hint wording is allowed, two hints at once are a dump; Doc-injection runs on
+the `injected` paper; calls are attributed to turns and harness cost is kept apart; a judge that
+never returns valid JSON, and a crashing simulated student, fail the run instead of the eval;
+per-profile pass rules; citation threshold counts removed citations; Markdown/JSON scorecard;
+load test with N concurrent students reports TTFT percentiles and error codes.
+
+Offline:
+
+1. `pnpm uxie eval visible-cues --runs 1 --turns 4` → 9 conversations, a scorecard in
+   `eval-results/<date>/visible-cues.md` with the six §1.6 thresholds, profile pass rates, rubric
+   means, latency/tokens/cost and failing runs; the JSON next to it has the transcripts.
+2. `pnpm uxie loadtest --concurrency 2,4 --duration 2s --mock-delay 50ms` → one row per level.
+
+With a real provider (needs `LLM_API_KEY`; set `LLM_PROVIDER=anthropic` in the shell or `.env`):
+
+3. Smoke: `pnpm uxie eval visible-cues --profiles confused,lazy,jailbreaker --runs 1 --turns 6`
+   (≈ €0.40). Read a transcript in the JSON and check the judge's notes are fair.
+4. Benchmark: `pnpm uxie eval visible-cues --providers anthropic:claude-sonnet-5-5@low,anthropic:claude-sonnet-5-5@medium,anthropic:claude-haiku-4-5@low`
+   (2 runs × 12 turns per profile, ≈ €5–7 per candidate including the harness). Add
+   `google:<model>` / `openai:<model>` candidates when their keys are set.
+5. Load test: `pnpm uxie loadtest --concurrency 5,10,15 --duration 1m`.
+6. Gate: copy the scorecards that back the decision to `docs/eval/` and record the
+   "Production inference provider" ADR; re-run after prompt changes until the §1.6 thresholds pass
+   on the chosen provider.
+
+Last run: 2026-10-03.
+
+- Steps 1–2 (mock): pass.
+- Step 3–4 (Anthropic): three candidates benchmarked, see ADR-023 and `docs/eval/`. Tuning found
+  during the runs: `assess.md` filed wrong-but-on-topic answers as `off_topic` (fixed, Confused
+  4/4 afterwards); the judge rubric and the string-leakage check were stricter than §13.1 and
+  produced false positives (starter questions, restated paper facts, hints used as directed),
+  corrected and the report rescored with `--rescore`. Benchmark ≈ €17, load test ≈ €3.
+- Step 5: Sonnet 5.5 @ low, TTFT p95 3.9/3.8/4.0 s at 5/10/15, no errors.
+- Step 6: pending. The instructor benchmarks with real papers and a Gemini candidate, then
+  accepts or changes ADR-023; a full re-run with the final prompts is still to be done.

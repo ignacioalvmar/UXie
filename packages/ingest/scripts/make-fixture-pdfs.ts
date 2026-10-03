@@ -6,6 +6,8 @@
  *   running header and a page-number footer that extraction must strip.
  * - scanned-page/source.pdf: a short synthetic paper whose page 3 is figure-only (vector
  *   drawing, no text layer beyond a caption), which must raise a `scanned_or_figure_only` warning.
+ * - injected/source.pdf: a synthetic paper whose page 3 embeds an instruction aimed at AI tutors,
+ *   for the doc-injection eval profile (PRD §13.1).
  *
  * Output is deterministic (fixed dates, no random ids), so re-running produces identical files.
  */
@@ -101,8 +103,9 @@ async function save(doc: PDFDocument, path: string) {
   console.log(`wrote ${path}`);
 }
 
-async function visibleCues() {
-  const dir = resolve(root, "visible-cues");
+/** Typeset a hand-written `pages.json` one PDF page per page. */
+async function fromPagesJson(slug: string, header: string) {
+  const dir = resolve(root, slug);
   const src = JSON.parse(readFileSync(resolve(dir, "pages.json"), "utf8")) as {
     title: string;
     authors: string[];
@@ -111,7 +114,7 @@ async function visibleCues() {
   const { doc, font } = await newDoc(src.title, src.authors);
   for (const p of src.pages) {
     const page = doc.addPage(A4);
-    drawChrome(page, font, { header: "Visible Cues - UXie synthetic test paper", pageNo: p.n });
+    drawChrome(page, font, { header, pageNo: p.n });
     drawBody(page, font, p.text);
   }
   await save(doc, resolve(dir, "source.pdf"));
@@ -179,5 +182,6 @@ async function scannedPage() {
   await save(doc, resolve(dir, "source.pdf"));
 }
 
-await visibleCues();
+await fromPagesJson("visible-cues", "Visible Cues - UXie synthetic test paper");
 await scannedPage();
+await fromPagesJson("injected", "Blame-Free Errors - UXie synthetic test paper");

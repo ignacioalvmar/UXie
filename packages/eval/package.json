@@ -13,6 +13,10 @@
   "dependencies": {
     "@uxie/core": "workspace:*",
     "@uxie/llm": "workspace:*",
-    "@uxie/tutor": "workspace:*"
+    "@uxie/tutor": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.1"
   }
 }
