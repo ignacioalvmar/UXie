@@ -8,6 +8,11 @@ Rules:
 - intent: "answer" if they attempt the tutor's question; "question" if they ask something;
   "shortcut_request" if they ask for summaries/answers/assignment text; "off_topic"; "meta" (about
   the tool/process); "greeting".
+- A reply to the tutor's question is an "answer" even when it is wrong, vague, a guess phrased as a
+  question ("Is it about the colours?"), or misses the point of the question ("Maybe because the
+  participants were tired?"); rate such replies "incorrect". A message that mentions the paper, its
+  study or its topic is never "off_topic". Use "off_topic" only for messages unrelated to the
+  paper, UX, or the student's project.
 - answer_quality applies only to "answer": correct | partial | incorrect | none (empty, "idk").
   Use "none" for every other intent.
 - objective_updates: mark "demonstrated" ONLY if the student's OWN words in this message (or

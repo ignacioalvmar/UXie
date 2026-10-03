@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@uxie/core": "workspace:*",
+    "@uxie/eval": "workspace:*",
     "@uxie/ingest": "workspace:*",
     "@uxie/llm": "workspace:*",
     "@uxie/tutor": "workspace:*",

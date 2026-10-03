@@ -16,7 +16,8 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | M1        | Pure pedagogical core                                     | done                                |
 | M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
 | M3        | Ingestion (unpdf, docling), analysis, guide drafting      | done (verified with Claude)         |
-| M4–M10    | Eval, data layer, UI, admin, launch                       | planned                             |
+| M4        | Eval harness, benchmark, load test (decision gate)        | in progress (gate: provider ADR)    |
+| M5–M10    | Data layer, UI, admin, launch                             | planned                             |
 
 ## Layout
 
@@ -45,6 +46,9 @@ pnpm --filter @uxie/worker dev
 pnpm uxie --help
 pnpm uxie chat visible-cues --provider mock --debug   # terminal tutor, no keys needed
 pnpm uxie ingest paper.pdf --paper local-x --local     # extract + draft a guide into fixtures/papers/local-x
+pnpm uxie eval visible-cues --runs 1 --turns 4         # simulated students + judge → eval-results/<date>/
+pnpm uxie eval visible-cues --providers anthropic:claude-sonnet-5-5@low,anthropic:claude-haiku-4-5
+pnpm uxie loadtest --concurrency 5,10,15 --duration 1m # TTFT p95 + error rate under load
 ```
 
 ## Deploy (walking skeleton)
