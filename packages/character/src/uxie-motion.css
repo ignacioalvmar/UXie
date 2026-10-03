@@ -1,0 +1,479 @@
+/* UXie character motion. Every state is a class on the .uxie root: s-idle, s-listening,
+   s-thinking, s-talking, s-hint, s-explain, s-celebrate, s-puzzled.
+   Tempo: t-slow | t-normal | t-fast. Pause: ux-still. Parts: ux-root, ux-head, ux-tuft,
+   ux-eye, ux-look, ux-brows, ux-armP (prop/gesture arm), ux-armO, ux-m-*, ux-fx-*. */
+
+.uxie {
+  position: relative;
+  display: block;
+  --ux-t: 1;
+}
+.uxie.t-slow {
+  --ux-t: 1.6;
+}
+.uxie.t-fast {
+  --ux-t: 0.65;
+}
+.uxie svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.uxie .ux-a {
+  transform-box: view-box;
+}
+.uxie .ux-f {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.uxie .dirL {
+  --dir: 1;
+}
+.uxie .dirR {
+  --dir: -1;
+}
+
+/* ---------- idle baseline ---------- */
+.uxie .ux-root {
+  animation: ux-breathe calc(3.6s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie .ux-shadow {
+  animation: ux-shadow calc(3.6s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie .ux-head {
+  animation: ux-sway calc(7s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie .ux-eye {
+  animation: ux-blink calc(5.2s * var(--ux-t)) infinite;
+}
+.uxie .ux-tuft {
+  animation: ux-tuft calc(4.2s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie .ux-look {
+  transition: transform 0.35s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+.uxie .ux-brows {
+  transition: transform 0.3s ease;
+}
+.uxie .ux-m-open,
+.uxie .ux-m-talk,
+.uxie .ux-m-o {
+  display: none;
+}
+.uxie .ux-fx {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* ---------- listening: student is typing ---------- */
+.uxie.s-listening .ux-head {
+  animation: ux-listen calc(2.6s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-listening .ux-look {
+  transform: translate(4px, 4px);
+}
+.uxie.s-listening .ux-tuft {
+  animation: ux-perk calc(1.8s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-listening .ux-brows {
+  transform: translateY(-3px);
+}
+
+/* ---------- thinking: assessment running ---------- */
+.uxie.s-thinking .ux-head {
+  animation: ux-ponder calc(3.2s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-thinking .ux-look {
+  transform: translate(5px, -7px);
+}
+.uxie.s-thinking .ux-armP {
+  animation: ux-tap calc(1.2s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-thinking .ux-fx-think {
+  opacity: 1;
+}
+.uxie.s-thinking .ux-dot {
+  animation: ux-dot calc(1.5s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-thinking .ux-dot.d2 {
+  animation-delay: calc(0.25s * var(--ux-t));
+}
+.uxie.s-thinking .ux-dot.d3 {
+  animation-delay: calc(0.5s * var(--ux-t));
+}
+.uxie.s-thinking .ux-m-idle {
+  display: none;
+}
+.uxie.s-thinking .ux-m-o {
+  display: inline;
+}
+
+/* ---------- talking / explain: reply streaming ---------- */
+.uxie.s-talking .ux-root,
+.uxie.s-explain .ux-root {
+  animation: ux-talkbob calc(0.9s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-talking .ux-m-idle,
+.uxie.s-explain .ux-m-idle {
+  display: none;
+}
+.uxie.s-talking .ux-m-talk,
+.uxie.s-explain .ux-m-talk {
+  display: inline;
+  animation: ux-mouth calc(0.34s * var(--ux-t)) ease-in-out infinite alternate;
+}
+.uxie.s-explain .ux-armP {
+  animation: ux-gesture calc(1.6s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-explain .ux-head {
+  animation: ux-nod calc(1.6s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-explain .ux-look {
+  transform: translate(-2px, 1px);
+}
+.uxie.s-explain .ux-brows {
+  transform: translateY(-2px);
+}
+
+/* ---------- hint: help ladder offers a hint ---------- */
+.uxie.s-hint .ux-root {
+  animation:
+    ux-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 1,
+    ux-breathe calc(3.6s * var(--ux-t)) ease-in-out 0.5s infinite;
+}
+.uxie.s-hint .ux-armP {
+  animation: ux-raise 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) forwards;
+}
+.uxie.s-hint .ux-brows {
+  transform: translateY(-5px);
+}
+.uxie.s-hint .ux-look {
+  transform: translate(0, -3px);
+}
+.uxie.s-hint .ux-m-idle {
+  display: none;
+}
+.uxie.s-hint .ux-m-open {
+  display: inline;
+}
+.uxie.s-hint .ux-fx-bulb {
+  opacity: 1;
+}
+.uxie.s-hint .ux-bulb {
+  animation: ux-bulb calc(1.6s * var(--ux-t)) ease-in-out infinite;
+}
+
+/* ---------- celebrate: objective demonstrated ---------- */
+.uxie.s-celebrate .ux-root {
+  animation: ux-hop calc(0.8s * var(--ux-t)) cubic-bezier(0.3, 0, 0.4, 1) infinite;
+}
+.uxie.s-celebrate .ux-shadow {
+  animation: ux-hopshadow calc(0.8s * var(--ux-t)) cubic-bezier(0.3, 0, 0.4, 1) infinite;
+}
+.uxie.s-celebrate .ux-armP {
+  animation: ux-wave calc(0.4s * var(--ux-t)) ease-in-out infinite alternate;
+}
+.uxie.s-celebrate .ux-armO {
+  animation: ux-wave calc(0.4s * var(--ux-t)) ease-in-out infinite alternate-reverse;
+}
+.uxie.s-celebrate .ux-tuft {
+  animation: ux-flap calc(0.4s * var(--ux-t)) ease-in-out infinite alternate;
+}
+.uxie.s-celebrate .ux-brows {
+  transform: translateY(-5px);
+}
+.uxie.s-celebrate .ux-m-idle {
+  display: none;
+}
+.uxie.s-celebrate .ux-m-open {
+  display: inline;
+}
+.uxie.s-celebrate .ux-fx-spark {
+  opacity: 1;
+}
+.uxie.s-celebrate .ux-spark {
+  animation: ux-twinkle calc(1.2s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-celebrate .ux-spark.s2 {
+  animation-delay: calc(0.3s * var(--ux-t));
+}
+.uxie.s-celebrate .ux-spark.s3 {
+  animation-delay: calc(0.6s * var(--ux-t));
+}
+.uxie.s-celebrate .ux-spark.s4 {
+  animation-delay: calc(0.9s * var(--ux-t));
+}
+
+/* ---------- puzzled: off-topic or shortcut request ---------- */
+.uxie.s-puzzled .ux-head {
+  animation: ux-tilt calc(2.8s * var(--ux-t)) ease-in-out infinite;
+}
+.uxie.s-puzzled .ux-look {
+  transform: translate(-3px, -3px);
+}
+.uxie.s-puzzled .ux-brows {
+  transform: rotate(-5deg) translateY(-3px);
+}
+.uxie.s-puzzled .ux-m-idle {
+  display: none;
+}
+.uxie.s-puzzled .ux-m-o {
+  display: inline;
+}
+.uxie.s-puzzled .ux-fx-q {
+  opacity: 1;
+}
+.uxie.s-puzzled .ux-q {
+  animation: ux-qbob calc(1.4s * var(--ux-t)) ease-in-out infinite;
+}
+
+/* ---------- pause + reduced motion ---------- */
+.uxie.ux-still * {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .uxie * {
+    animation-iteration-count: 1 !important;
+    animation-duration: 0.01s !important;
+  }
+}
+
+/* ---------- keyframes ---------- */
+@keyframes ux-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.012, 0.99);
+  }
+}
+@keyframes ux-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+}
+@keyframes ux-sway {
+  0%,
+  100% {
+    transform: rotate(-1.2deg);
+  }
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+@keyframes ux-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.08);
+  }
+  96% {
+    transform: scaleY(1);
+  }
+}
+@keyframes ux-tuft {
+  0%,
+  100% {
+    transform: rotate(calc(var(--dir, 1) * -3deg));
+  }
+  50% {
+    transform: rotate(calc(var(--dir, 1) * 4deg));
+  }
+}
+@keyframes ux-listen {
+  0%,
+  100% {
+    transform: rotate(5deg) translateY(2px);
+  }
+  50% {
+    transform: rotate(7deg) translateY(3px);
+  }
+}
+@keyframes ux-perk {
+  0%,
+  100% {
+    transform: rotate(calc(var(--dir, 1) * 6deg));
+  }
+  50% {
+    transform: rotate(calc(var(--dir, 1) * 10deg));
+  }
+}
+@keyframes ux-ponder {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(-6deg) translateY(-1px);
+  }
+}
+@keyframes ux-tap {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(calc(var(--dir, 1) * 6deg));
+  }
+}
+@keyframes ux-dot {
+  0% {
+    transform: translateY(4px) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-6px) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes ux-talkbob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+@keyframes ux-mouth {
+  0% {
+    transform: scaleY(0.3);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+@keyframes ux-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06, 0.95);
+  }
+  70% {
+    transform: scale(0.98, 1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes ux-raise {
+  to {
+    transform: rotate(calc(var(--dir, 1) * 28deg));
+  }
+}
+@keyframes ux-bulb {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.08);
+  }
+}
+@keyframes ux-gesture {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(calc(var(--dir, 1) * 22deg));
+  }
+  65% {
+    transform: rotate(calc(var(--dir, 1) * 10deg));
+  }
+}
+@keyframes ux-nod {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.5deg) translateY(3px);
+  }
+}
+@keyframes ux-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+  15% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-22px) scale(0.98, 1.03);
+  }
+  85% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes ux-hopshadow {
+  0%,
+  15%,
+  85%,
+  100% {
+    transform: scale(1);
+    opacity: 0.12;
+  }
+  50% {
+    transform: scale(0.7);
+    opacity: 0.06;
+  }
+}
+@keyframes ux-wave {
+  from {
+    transform: rotate(calc(var(--dir, 1) * 25deg));
+  }
+  to {
+    transform: rotate(calc(var(--dir, 1) * 50deg));
+  }
+}
+@keyframes ux-flap {
+  from {
+    transform: rotate(calc(var(--dir, 1) * -6deg));
+  }
+  to {
+    transform: rotate(calc(var(--dir, 1) * 8deg));
+  }
+}
+@keyframes ux-twinkle {
+  0%,
+  100% {
+    transform: scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1) rotate(45deg);
+    opacity: 1;
+  }
+}
+@keyframes ux-tilt {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(-10deg);
+  }
+}
+@keyframes ux-qbob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(6deg);
+  }
+}

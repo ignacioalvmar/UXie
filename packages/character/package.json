@@ -1,0 +1,29 @@
+{
+  "name": "@uxie/character",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Animated 2D UXie embodiments (Pip, Miso, Luma) as React components with CSS-only motion.",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/uxie-motion.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": ">=18.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "~6.0.3",
+    "vitest": "^3.0.0"
+  }
+}

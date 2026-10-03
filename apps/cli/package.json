@@ -1,0 +1,15 @@
+{
+  "name": "@uxie/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Instructor/operator CLI: `pnpm uxie <cmd>`.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@uxie/core": "workspace:*",
+    "commander": "^15.0.0",
+    "tsx": "^4.23.15"
+  }
+}

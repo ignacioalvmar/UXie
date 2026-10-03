@@ -1,0 +1,18 @@
+{
+  "name": "@uxie/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Render background worker: ingestion jobs and scheduled maintenance.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit -p .",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@uxie/core": "workspace:*",
+    "pino": "^10.3.1",
+    "tsx": "^4.23.15"
+  }
+}

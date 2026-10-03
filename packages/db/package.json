@@ -1,0 +1,16 @@
+{
+  "name": "@uxie/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Supabase implementations of the tutor ports.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@uxie/core": "workspace:*"
+  }
+}
