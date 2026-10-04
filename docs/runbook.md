@@ -71,3 +71,61 @@ the Supabase keys.
 - **Version failed with "no extractable text"**: the PDF is scanned. With `DOCLING_URL` set, use
   "Retry with docling (OCR)" on the version page; otherwise upload a PDF with a text layer.
 - **Locally**: `pnpm --filter @uxie/worker dev` with the Supabase vars in `.env` (or exported).
+
+## Data requests and deletion (FR-8.1–8.3)
+
+- **Data download** is self-service (`/account` → "Download my data"); each download is logged as a
+  completed `access` request and listed under `/admin/data-requests` → Closed.
+- **Deletion requests** appear under `/admin/data-requests` with their due date (30 days); the admin
+  overview shows a red banner when one is overdue. Students can withdraw a request until you mark it
+  "in progress". Reject only with a reason (e.g. a legal retention obligation) and tell the student.
+- **Completing a deletion** (type the pseudonym to confirm) runs `complete_deletion()` in one
+  transaction: `deletion_ledger` row (pseudonym + auth id), the request is closed with `student_id`
+  null, and the auth user is deleted, which cascades profile, conversations, messages, feedback,
+  usage and events. `llm_calls` keep their cost rows without the conversation link. The page then
+  sends the confirmation email over `SMTP_URL`; without SMTP it shows "Open it in your mail program"
+  (a prepared `mailto:`). Send it before leaving the page: the address is gone afterwards.
+- **Instructor accounts** are refused (change the role first with `pnpm uxie role set`).
+
+### After a backup restore
+
+A restored backup brings deleted students back. Re-apply the ledger before reopening the app:
+
+```sql
+select public.reapply_deletion_ledger();   -- returns the number of accounts deleted again
+```
+
+Run it in the SQL editor of the restored project (it is not callable from the app). Check
+`select count(*) from profiles p join deletion_ledger d using (pseudonym_id)` is 0 afterwards.
+
+### Exports already shared
+
+Deletions do not reach copies outside UXie. Research exports exclude deleted students and pending
+deletions from the moment of the request. If a deleted student appears in an export you shared
+(see `/admin/exports` → Export log for when and what), ask the recipients to delete the rows with
+that pseudonym (the ledger lists it) and note it in the request.
+
+## Retention (FR-8.4)
+
+Set `RETENTION_REVIEW_DATE` (e.g. the end of the semester + the period in the privacy notice); the
+admin overview reminds you 30 days ahead. Then:
+
+```bash
+pnpm uxie purge --before 2027-03-31 --dry-run    # counts only
+pnpm uxie purge --before 2027-03-31              # deletes; an events row `retention_purge` records the counts
+```
+
+The purge removes conversations whose last activity is before the date (messages and feedback
+cascade) for all students, test chats included; model-call cost rows stay without the link.
+Export first (`pnpm uxie export --research --format csv --out …`) if consented research data must be
+kept, and store it per the privacy notice.
+
+## Reports, exports and costs (FR-7.x)
+
+- `/admin/conversations`, `/admin/reports`, `/admin/exports`, `/admin/usage`, `/admin/health`;
+  the same from the CLI: `pnpm uxie report <paper> [--named]`, `pnpm uxie costs [--month 2026-10]`,
+  `pnpm uxie export [--paper p] [--research] --format csv|json --out file`.
+- "Reveal identity" on a transcript and `report --named` show emails; both are for contacting a
+  student, never for grading. Reveals are logged (`events.type = 'identity_revealed'`).
+- Every export (web and CLI) writes `export_log`. Store export files encrypted and delete them when
+  the purpose ends.

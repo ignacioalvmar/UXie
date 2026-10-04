@@ -390,3 +390,72 @@ Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, worker running, dev serv
   version pages: 200); a student gets 404 from `/api/admin/*`.
 - Not yet run by hand in the browser: steps 2–8 and 13 (drag & drop, live validation, the test
   chat UI and dialogs) — the browser profile used was signed in as a student.
+
+## M9: Review, reports, exports, data rights, costs
+
+Automated: `pnpm check` (class report aggregation on a fixture class: per-objective percentages,
+north-star proxy per conversation/student/≥10-turn student, misconception grouping, rates, cost per
+conversation, Markdown; CSV escaping/quoting/BOM; usage totals and cache hit ratio; review filters,
+state-timeline transitions, request bodies, due/retention wording, confirmation mail and mailto;
+engine stores the learner snapshot). `pnpm test:db` (`review.test.ts`: report numbers on a fixture
+class with a test chat that must not count; review list filters and transcript; CSV export with
+formula cells escaped, no emails, logged; research export keeps only consenting students and drops
+pending deletions; data download with email logged as an access request; completed deletion
+removes profile, conversations, messages, feedback, usage, events and the auth user, writes the
+ledger, closes the request with the pseudonym kept; instructor accounts refused; usage total equals
+the sum of `llm_calls` for the month; purge dry run and purge keep `llm_calls` without the link;
+every new SQL function refused to signed-in users).
+
+Setup: as M8 (`supabase start`, seed, `pnpm db:seed-storage`, `LLM_PROVIDER=mock`, dev server).
+
+1. As `student.b`, chat a few turns on the seeded paper (include a message starting with `=`), use
+   "Explain it to me", rate a reply 👍.
+2. As `instructor@thi.de`: `/admin` shows month-to-date spend, open requests and (with
+   `RETENTION_REVIEW_DATE` within 30 days) the retention reminder.
+3. `/admin/conversations`: filter by paper, mode, pseudonym, dates, "Has feedback"; invalid query
+   values are ignored. Open a conversation: transcript with help-level badges, 👍 on the rated
+   reply, citation chips open the PDF page, "Objectives now", state timeline (replies, help levels,
+   "Explain it to me", objective transitions with a real model). "Reveal identity" asks first, shows
+   the email and writes an `identity_revealed` event.
+4. `/admin/reports` → the paper: students, conversations, median turns, north-star proxy, helpfulness,
+   invalid citations, assessment failures, cost per conversation, objective bars, misconceptions,
+   students. "Download Markdown" saves `report-<slug>-<date>.md`.
+5. `/admin/exports`: research export (default) and an all-students CSV; the CSV opens in a spreadsheet
+   with `'=…` shown as text and no emails; both appear in the export log.
+6. `/admin/usage`: spend vs ceiling, calls/errors/cache hit ratio, tokens by purpose and model,
+   latency p50/p95 and first-token p95, by-day table; previous/next month links. Compare with
+   `select sum(cost_eur) from llm_calls where created_at >= date_trunc('month', now())`.
+7. `/admin/health`: database, storage, model provider (cached 60 s), worker heartbeat (stop the
+   worker for 2+ minutes → "Stale"), last errors.
+8. As a student: `/account` → "Download my data" (JSON with email, conversations, messages,
+   feedback, requests); "Delete my account…" → dialog lists what is deleted and kept → "Request
+   deletion" → status with the due date; "Withdraw my deletion request" works while open.
+9. As the instructor: `/admin/data-requests` lists it with "due in 30 days" (an overdue one is red and
+   the overview shows a banner). "Delete account…" needs the pseudonym typed; afterwards the notice
+   says the account is deleted and either "confirmation email was sent" (SMTP set) or offers "Open
+   it in your mail program". The student cannot sign in; no rows with their id remain; the ledger has
+   the pseudonym.
+10. CLI: `pnpm uxie report visible-cues [--named]`, `pnpm uxie costs [--month 2026-10]`,
+    `pnpm uxie export --paper visible-cues --format csv --out x.csv`, `pnpm uxie export --research
+--format json --out x.json`, `pnpm uxie purge --before 2026-01-01 --dry-run`; a future date,
+    a bad month or an unknown paper are refused.
+
+Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, dev server on :3000, worker heartbeat fresh).
+
+- `pnpm check`: 407 tests green; `pnpm test:db`: 50/50 (after deleting the seeded students' leftover
+  conversations from the e2e run).
+- End to end over HTTP (script, synthetic accounts): students get 404 from every new admin route;
+  review list, transcript (10 messages, timeline with help levels ask → hint 1 → hint 2 → explanation
+  → stuck → check), reveal + audit event without the email; report JSON and Markdown; CSV export
+  starts with the BOM, `'=SUM(…)` and `'@me…` escaped, no emails; research export only the consenting
+  student; export log; usage total €0.55692 = sum of 77 `llm_calls` this month; health (DB, storage,
+  mock ping, worker fresh); data download with email; deletion request (201, then 200 for the
+  repeat), wrong pseudonym 400, completion 200 with `mailto` (no SMTP), no rows left, ledger row,
+  sign-in refused.
+- In the browser (signed in as the seeded instructor; screenshots unavailable, checked through the
+  DOM): every admin page renders, no horizontal scroll at 375 px; reveal identity; export form
+  download + log refresh; overdue banner and badge; deletion dialog disabled until the pseudonym is
+  typed, completion notice with the mailto link stays visible; student request + withdraw on
+  `/account`.
+- Not run: SMTP delivery (no SMTP server configured locally), objective transitions with a real model
+  (the mock assessment never advances objectives; transitions are covered by unit and DB tests).

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
+export { dateTime, inputClass } from "../../lib/admin/format";
+
 /**
  * Small building blocks for the instructor pages (FR-6.x). Same tokens as the student UI;
  * 44 px minimum targets (§2.5); errors are announced (`role="alert"`), progress politely.
@@ -158,9 +160,6 @@ export function Card({
   );
 }
 
-export const inputClass =
-  "min-h-11 w-full rounded-field border-[1.5px] border-line bg-surface px-3 text-base text-ink placeholder:text-placeholder";
-
 export function Field({
   label,
   hint,
@@ -251,17 +250,6 @@ export function Dialog({
     </dialog>
   );
 }
-
-export const dateTime = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "–";
 
 /** Same rule as the server's slugs: lowercase words joined by single dashes, max 60 chars. */
 export function slugify(text: string): string {

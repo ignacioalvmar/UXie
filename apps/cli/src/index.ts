@@ -17,6 +17,7 @@ import {
   publishCommand,
   retireCommand,
 } from "./commands/content";
+import { costsCommand, exportCommand, purgeCommand, reportCommand } from "./commands/review";
 import { repoRoot } from "./paths";
 
 const envFile = resolve(repoRoot, ".env");
@@ -39,12 +40,6 @@ const run =
       } else throw e;
     }
   };
-
-/** Placeholder action for commands that land in a later milestone (PRD §16). */
-const later = (milestone: string) => () => {
-  console.error(`Not implemented yet: arrives with milestone ${milestone} (see docs/PRD.md §16).`);
-  process.exitCode = 2;
-};
 
 const program = new Command()
   .name("uxie")
@@ -145,29 +140,31 @@ program
 
 program
   .command("report")
-  .argument("<paper>")
-  .option("--named")
-  .description("Class report as Markdown")
-  .action(later("M9"));
+  .argument("<paper>", "paper slug")
+  .option("--named", "add display names and emails (personal data; operator only)")
+  .option("--out <file>", "write to a file instead of stdout")
+  .description("Class report as Markdown (FR-7.2)")
+  .action(run(reportCommand));
 program
   .command("costs")
-  .option("--month <YYYY-MM>")
-  .description("Cost summary")
-  .action(later("M9"));
+  .option("--month <YYYY-MM>", "calendar month in UTC (default: this month)")
+  .option("--out <file>", "write to a file instead of stdout")
+  .description("Usage and cost summary as Markdown (FR-7.4)")
+  .action(run(costsCommand));
 program
   .command("export")
-  .option("--paper <p>")
-  .option("--research", "only consenting students")
+  .option("--paper <slug>", "only this paper")
+  .option("--research", "only students who consent to research now")
   .requiredOption("--format <fmt>", "csv | json")
   .requiredOption("--out <file>")
-  .description("Export conversations (FR-7.3)")
-  .action(later("M9"));
+  .description("Export conversations, one row per message (FR-7.3); logged")
+  .action(run(exportCommand));
 program
   .command("purge")
-  .requiredOption("--before <date>")
-  .option("--dry-run")
-  .description("Delete conversations older than a date (FR-8.4)")
-  .action(later("M9"));
+  .requiredOption("--before <date>", "YYYY-MM-DD: conversations last active before this day")
+  .option("--dry-run", "count only")
+  .description("Delete conversations older than a date for all students (FR-8.4)")
+  .action(run(purgeCommand));
 
 program
   .command("role")

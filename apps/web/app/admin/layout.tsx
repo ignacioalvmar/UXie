@@ -5,6 +5,19 @@ import { requireInstructor } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
+const NAV = [
+  ["/admin", "Overview"],
+  ["/admin/content", "Content"],
+  ["/admin/conversations", "Conversations"],
+  ["/admin/reports", "Reports"],
+  ["/admin/exports", "Exports"],
+  ["/admin/data-requests", "Data requests"],
+  ["/admin/usage", "Usage"],
+  ["/admin/health", "Health"],
+  ["/admin/settings/ai", "AI provider"],
+  ["/", "Student view"],
+] as const;
+
 /** FR-1.6: instructors only; anyone else gets a 404 from requireInstructor(). */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireInstructor();
@@ -22,18 +35,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <span className="rounded-chip bg-panel px-2 py-1 text-sm font-bold">Instructor</span>
           </span>
           <nav aria-label="Admin" className="flex flex-wrap gap-1">
-            <Link href="/admin" className={nav}>
-              Overview
-            </Link>
-            <Link href="/admin/content" className={nav}>
-              Content
-            </Link>
-            <Link href="/admin/settings/ai" className={nav}>
-              AI provider
-            </Link>
-            <Link href="/" className={nav}>
-              Student view
-            </Link>
+            {NAV.map(([href, label]) => (
+              <Link key={href} href={href} className={nav}>
+                {label}
+              </Link>
+            ))}
           </nav>
         </div>
       </header>

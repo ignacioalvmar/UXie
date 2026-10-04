@@ -10,3 +10,6 @@ export * from "./repos/feedback";
 export * from "./repos/admin";
 export * from "./repos/ingest";
 export * from "./content";
+export * from "./repos/review";
+export * from "./repos/dataRights";
+export * from "./exports";

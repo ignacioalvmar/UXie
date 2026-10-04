@@ -21,7 +21,8 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | M6        | Library, workspace (PDF + chat), limits, lock, retries      | done (mock LLM; local stack)        |
 | M7        | Modes, Explain-it, progress, Start over, feedback           | done (mock LLM; local stack)        |
 | M8        | Admin content: upload, worker ingest, guides, test, publish | done (mock LLM; local stack)        |
-| M9–M10    | Review, reports, exports, data rights, launch               | planned                             |
+| M9        | Review, reports, exports, data rights, costs, admin health  | done (mock LLM; local stack)        |
+| M10       | Hardening and launch readiness                              | planned                             |
 
 ## Layout
 
@@ -56,6 +57,10 @@ pnpm uxie loadtest --concurrency 5,10,15 --duration 1m # TTFT p95 + error rate u
 pnpm uxie guide pull visible-cues --out guide.yaml      # edit a DB guide in your editor …
 pnpm uxie guide push visible-cues guide.yaml           # … validate + save as draft (newest version)
 pnpm uxie guide approve visible-cues && pnpm uxie publish visible-cues
+pnpm uxie report visible-cues                          # class report (Markdown)
+pnpm uxie costs --month 2026-10                        # usage and cost summary
+pnpm uxie export --research --format csv --out x.csv   # research export, logged
+pnpm uxie purge --before 2026-03-31 --dry-run          # retention purge (counts only)
 ```
 
 ## Deploy (walking skeleton)

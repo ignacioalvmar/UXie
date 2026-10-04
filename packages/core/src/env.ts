@@ -114,6 +114,11 @@ export const BaseEnvSchema = z.object({
   WORKER_POLL_MS: withDefault(int.positive(), 5000),
   WORKER_JOB_TIMEOUT_MS: withDefault(int.positive(), 900_000),
   ALERT_EMAIL: opt(z.email()),
+
+  // Transactional mail from the app (FR-8.3 deletion confirmation; ADR-028). Auth emails go
+  // through Supabase's own SMTP settings. Unset = the instructor sends the confirmation by hand.
+  SMTP_URL: opt(z.url().refine((u) => /^smtps?:/.test(u), "must start with smtp:// or smtps://")),
+  MAIL_FROM: opt(z.string().min(3)),
 });
 
 /** Supabase access; required by web, worker and DB-backed CLI commands. */
@@ -152,6 +157,9 @@ export function envProblems(env: BaseEnv): string[] {
   }
   for (const p of llmSettingsProblems(llmSettingsFromEnv(env)))
     problems.push(`${p} (${ENV_KEY_HINT})`);
+  if (env.SMTP_URL && !env.MAIL_FROM) {
+    problems.push("MAIL_FROM: required when SMTP_URL is set");
+  }
   if (env.EXTRACTOR === "docling" && !env.DOCLING_URL) {
     problems.push("DOCLING_URL: required for EXTRACTOR=docling");
   }

@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",
-    "@uxie/core": "workspace:*"
+    "@uxie/core": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "tsx": "^4.23.15",
