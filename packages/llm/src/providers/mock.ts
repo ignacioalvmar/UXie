@@ -76,6 +76,31 @@ export function mockGuideDraft(system: string) {
   };
 }
 
+/** Calls seen per student text, for `[mock:fail]` (fails until retried by the student). */
+const failedTexts = new Map<string, number>();
+
+/**
+ * Manual-test switches in the student's text, for tutor replies with the default mock only
+ * (docs/manual-tests.md, M6): `[mock:fail]` fails the first reply to that text (a plain error,
+ * not retried by the SDK), so the student's Retry succeeds; `[mock:slow]` waits 6 s before the first token.
+ */
+function devDirective(call: MockCall): MockResponse | null {
+  if (call.purpose !== "tutor") return null;
+  const last = call.messages.at(-1)?.content ?? "";
+  if (last.includes("[mock:fail]")) {
+    const seen = failedTexts.get(last) ?? 0;
+    failedTexts.set(last, seen + 1);
+    if (seen === 0)
+      return { text: "", error: Object.assign(new Error("mock failure"), { name: "MockFailure" }) };
+  }
+  if (last.includes("[mock:slow]"))
+    return {
+      text: "(mock UXie) Sorry for the wait. The paper covers this on page 2 [p. 2]. What do you notice there?",
+      delayMs: 6000,
+    };
+  return null;
+}
+
 /** Default scripted behaviour: valid assessments, short Socratic replies naming the help level. */
 export const defaultMockResponder: MockResponder = (call) => {
   if (call.purpose === "assessment") {
@@ -93,6 +118,8 @@ export const defaultMockResponder: MockResponder = (call) => {
     return "The student has been discussing the paper's main concepts.";
   if (call.purpose === "guide_draft") return JSON.stringify(mockGuideDraft(call.system));
   if (call.json) return "{}";
+  const directive = devDirective(call);
+  if (directive) return directive;
   const help = /HELP DIRECTIVE: (\w+)/.exec(call.system)?.[1]?.toLowerCase() ?? "ask";
   return `(mock UXie, ${help}) That's a thoughtful start. The paper discusses this on page 1 [p. 1]. What do you think the authors mean?`;
 };

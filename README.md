@@ -17,8 +17,9 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
 | M3        | Ingestion (unpdf, docling), analysis, guide drafting      | done (verified with Claude)         |
 | M4        | Eval harness, benchmark, load test (decision gate)        | harness done; provider ADR proposed |
-| M5        | Supabase data layer, RLS, auth, onboarding, AI settings   | in progress                         |
-| M6–M10    | Workspace, tutor UI, admin, launch                        | planned                             |
+| M5        | Supabase data layer, RLS, auth, onboarding, AI settings   | done (provider switch check in M6)  |
+| M6        | Library, workspace (PDF + chat), limits, lock, retries    | done (mock LLM; local stack)        |
+| M7–M10    | Tutor UI features, admin, reports, launch                 | planned                             |
 
 ## Layout
 
@@ -67,4 +68,6 @@ when prompted (`LLM_API_KEY`, Supabase keys). The worker has no public port.
 
 **Supabase.** EU/Frankfurt, separate dev and prod projects; setup steps (Auth hook, SMTP,
 password rules, redirect URLs) are in [docs/runbook.md](docs/runbook.md). Locally:
-`pnpm exec supabase start` (Docker), then `pnpm test:db`.
+`pnpm exec supabase start` (Docker), then `pnpm test:db`. `pnpm db:seed-storage` uploads the
+seeded paper's PDF so the workspace can show it (sign in as `student.a@thi.de`,
+password `uxie-dev-password`, local stack only).

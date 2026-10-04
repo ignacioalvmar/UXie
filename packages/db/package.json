@@ -9,7 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
-    "seed:generate": "tsx scripts/make-seed.ts"
+    "seed:generate": "tsx scripts/make-seed.ts",
+    "seed:storage": "tsx scripts/seed-storage.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

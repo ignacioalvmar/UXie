@@ -1,0 +1,23 @@
+/*
+ * UXie library screen: token ADDITIONS (Tailwind CSS v4).
+ * The base tokens live in ../login/tokens.css and are already merged into
+ * apps/web/app/globals.css. Add only the lines below to the same @theme block.
+ */
+@theme {
+  /* Status: "All ideas demonstrated" chip and progress segment */
+  --color-success-bg: #E4F1DA;     /* same value as panel-sage */
+  --color-success-ink: #2D5A1B;    /* chip text (7.0:1 on success-bg) */
+  --color-success-mark: #3F7A2A;   /* filled progress segment, demonstrated paper */
+
+  /* Progress segments */
+  --color-progress-empty: #C9C0E8; /* empty segment on panel (lavender) */
+  --color-progress-track: #E2DCF0; /* empty segment on surface (white); same value as line-soft */
+
+  /* Search hit highlight (<mark>) */
+  --color-highlight: #FFE7A3;
+
+  /* Radius */
+  --radius-card: 16px;             /* paper rows, conversation cards, module tiles */
+  --radius-hero: 20px;             /* "Continue" and "Next in order" cards */
+  --radius-pill: 999px;            /* status chips, mode chips */
+}

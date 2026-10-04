@@ -48,15 +48,25 @@ export default async function AccountPage() {
         <h2 id="sessions-h" className="font-display text-xl font-bold">
           Sessions
         </h2>
-        <form action={signOut}>
-          <input type="hidden" name="scope" value="global" />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center rounded-field border-2 border-primary px-4 font-bold text-primary"
-          >
-            Sign out on all devices
-          </button>
-        </form>
+        <div className="flex flex-wrap gap-3">
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center rounded-field bg-primary px-4 font-bold text-on-primary hover:bg-primary-hover"
+            >
+              Sign out
+            </button>
+          </form>
+          <form action={signOut}>
+            <input type="hidden" name="scope" value="global" />
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center rounded-field border-2 border-primary px-4 font-bold text-primary"
+            >
+              Sign out on all devices
+            </button>
+          </form>
+        </div>
       </section>
     </div>
   );

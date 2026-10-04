@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- Static reference exported from the UXie Paper Library design canvas. Visual reference only: implement with Tailwind + shadcn/ui per HANDOFF.md. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UXie library, web, no search results</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#5135C9}a:hover{color:#3A2399}
+input::placeholder{color:#6E6887}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #5135C9;outline-offset:2px}
+</style>
+</head>
+<body>
+<div style="background: #F6F4FB; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; color: #1F1A33; min-height: 100%">
+<header style="background: #FFFFFF; border-bottom: 1.5px solid #E2DCF0">
+<div style="max-width: 1280px; margin: 0 auto; padding: 12px 32px; box-sizing: border-box; display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+<a href="#library" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #1F1A33; min-height: 44px">
+<span style="width: 36px; height: 36px; border-radius: 11px; background: #5135C9; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" fill="none" height="20" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24" width="20"><path d="M4 5h16v11H9l-5 4z"></path><path d="M10 9.2a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2"></path></svg></span>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">UXie</span>
+</a>
+<nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap; flex: 1 1 auto">
+<a aria-current="page" href="#library" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 10px; background: #ECE7FA; color: #3A2399; font-weight: 700; font-size: 16px; text-decoration: none">Library</a>
+<a href="#conversations" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 10px; color: #4A4563; font-weight: 700; font-size: 16px; text-decoration: none">My conversations</a>
+</nav>
+<a href="#account" style="display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: #1F1A33; font-weight: 700; font-size: 16px; text-decoration: none">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #ECE7FA; color: #3A2399; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></span>
+        Account
+      </a>
+</div>
+</header>
+<main id="library" style="max-width: 1280px; margin: 0 auto; padding: 40px 32px 80px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 48px; line-height: 1.05; letter-spacing: -0.02em">Your library</h1>
+</div>
+<div style="flex: 0 1 470px; display: flex; align-items: flex-end; gap: 12px">
+<img alt="" src="../assets/miso.png" style="height: 112px; width: auto; flex-shrink: 0"/>
+
+
+<p style="margin: 0 0 14px 0; background: #FFFFFF; border: 1.5px solid #E2DCF0; border-radius: 18px 18px 18px 6px; padding: 12px 16px; font-size: 17px; line-height: 1.4">I’m searching titles, authors, key concepts and our past conversations.</p>
+
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="lib-search" style="font-weight: 700; font-size: 16px">Search papers and your conversations</label>
+<div style="position: relative">
+<svg aria-hidden="true" fill="none" height="22" stroke="#4A4563" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="position: absolute; left: 18px; top: 17px; pointer-events: none" viewbox="0 0 24 24" width="22"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input autocomplete="off" enterkeyhint="search" id="lib-search" placeholder="Title, author or concept, for example “feedback”" style="width: 100%; box-sizing: border-box; height: 56px; padding: 0 60px 0 52px; border: 1.5px solid #857F9F; border-radius: 12px; font: inherit; font-size: 18px; color: #1F1A33; background: #FFFFFF" type="text" value="zzz"/>
+
+<button aria-label="Clear search" style="position: absolute; right: 6px; top: 6px; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #4A4563; display: flex; align-items: center; justify-content: center; cursor: pointer" type="button"><svg aria-hidden="true" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-width="2.2" viewbox="0 0 24 24" width="20"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; margin-top: 8px">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 40px">
+
+
+<section aria-labelledby="results-h" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap">
+<h2 aria-live="polite" id="results-h" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -0.01em">0 papers match “zzz”</h2>
+<button style="min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #5135C9; font: inherit; font-weight: 700; font-size: 16px; cursor: pointer" type="button">Back to all modules</button>
+</div>
+
+<div style="display: flex; align-items: flex-end; gap: 12px; padding: 24px; background: #FFFFFF; border: 1.5px solid #E2DCF0; border-radius: 16px">
+<img alt="" src="../assets/miso.png" style="height: 72px; width: auto; flex-shrink: 0"/>
+<p style="margin: 0 0 6px 0; font-size: 17px; line-height: 1.45">Nothing in this course matches that yet. Try an author’s surname or a concept, like “mapping” or “memory”.</p>
+</div>
+
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+
+</ol>
+</section>
+
+</div>
+<aside aria-labelledby="conv-h" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px">
+<h2 id="conv-h" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 22px">Matching conversations</h2>
+<a href="#conversations" style="display: inline-flex; align-items: center; min-height: 44px; color: #5135C9; font-weight: 700; font-size: 15px">See all</a>
+</div>
+
+<p style="margin: 0; padding: 18px; background: #FFFFFF; border: 1.5px solid #E2DCF0; border-radius: 16px; font-size: 16px; color: #4A4563">None of your conversations mention that.</p>
+
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+
+</ul>
+</aside>
+</div>
+</main>
+</div>
+</body>
+</html>

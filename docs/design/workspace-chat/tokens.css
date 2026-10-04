@@ -1,0 +1,38 @@
+/*
+ * UXie workspace and chat: token ADDITIONS (Tailwind CSS v4).
+ * Base tokens: ../login/tokens.css. Library additions: ../library/tokens.css.
+ * Both are already merged into apps/web/app/globals.css. Add only the lines below
+ * to the same @theme block, then add the utilities after it.
+ */
+@theme {
+  /* Reader pane */
+  --color-reader-ground: #E9E5F2;   /* background behind the PDF page */
+  --color-cite-bg: #FFF4D1;         /* cited passage highlight on the page */
+  --color-cite-line: #E8B93A;       /* 2px outline around the cited passage */
+
+  /* Chat */
+  --color-illustration-bg: #EEF6E8; /* "Illustrative example" block; label uses success-ink */
+  --color-scrim: rgb(31 26 51 / 0.45); /* behind the progress drawer */
+
+  /* Radius */
+  --radius-bubble: 18px;            /* message bubbles; tail corner is 6px */
+}
+
+/* Student bubble: speaker on the right. Tutor bubble reuses .uxie-bubble from login. */
+.uxie-bubble--student {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: 18px 18px 6px 18px;
+}
+
+/* Character motion in the chat. Prefer @uxie/character states (HANDOFF.md §6);
+   these mirror the canvas for comparison only. */
+@keyframes uxie-dot { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+.uxie-typing-dot { animation: uxie-dot 1.2s ease-in-out infinite; }
+.uxie-typing-dot:nth-child(2) { animation-delay: .2s; }
+.uxie-typing-dot:nth-child(3) { animation-delay: .4s; }
+.uxie-resting { filter: grayscale(.85); opacity: .7; } /* character during blocking errors */
+
+@media (prefers-reduced-motion: reduce) {
+  .uxie-typing-dot { animation: none; }
+}
