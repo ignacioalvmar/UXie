@@ -8,6 +8,7 @@ import {
   type LlmSettings,
   type ProviderCredential,
 } from "./llmSettings";
+import { Mode } from "./schemas/state";
 
 /**
  * Environment schema (PRD §7). Pure: callers pass `process.env` (or any record) in.
@@ -89,6 +90,13 @@ export const BaseEnvSchema = z.object({
   TUTOR_LANGUAGE: withDefault(z.enum(["mirror", "en"]), "mirror"),
   CONTEXT_STRATEGY: withDefault(z.enum(["auto", "full", "retrieval"]), "auto"),
   RETRIEVAL_MAX_PAGES: withDefault(int.positive(), 8),
+  // Focus modes offered to students (D11: Critique and Build are P1, off until enabled).
+  TUTOR_MODES: withDefault(
+    csv.pipe(z.array(Mode).min(1)).refine((m) => m.includes("understand"), {
+      message: "must include understand (the default mode)",
+    }),
+    "understand,apply",
+  ),
 
   // Limits & cost
   DAILY_TURN_LIMIT: withDefault(int.positive(), 120),

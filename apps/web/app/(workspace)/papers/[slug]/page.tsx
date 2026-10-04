@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { UxieCharacter } from "@uxie/character";
 import { Workspace } from "../../../../components/workspace/Workspace";
 import { requireUser } from "../../../../lib/auth";
+import { enabledModes } from "../../../../lib/chat/store";
 import { isUuid } from "../../../../lib/http";
 import { loadWorkspace } from "../../../../lib/views";
 
@@ -28,7 +29,10 @@ export default async function PaperPage({ params, searchParams }: Props) {
   const { c } = await searchParams;
   const { user, profile } = await requireUser({ next: `/papers/${slug}` });
   const conversationId = typeof c === "string" && isUuid(c) ? c : null;
-  const result = await loadWorkspace(user.id, slug, conversationId);
+  const result = await loadWorkspace(user.id, slug, conversationId, {
+    modes: enabledModes(),
+    projectDescription: profile.projectDescription,
+  });
   if (result.kind === "not_found") notFound();
   const character = profile.uxieCharacter ?? "pip";
 
@@ -64,5 +68,12 @@ export default async function PaperPage({ params, searchParams }: Props) {
       </main>
     );
 
-  return <Workspace data={result.workspace} character={character} />;
+  // Keyed by conversation: Start over and "new conversation" links remount the chat state.
+  return (
+    <Workspace
+      key={result.workspace.conversation?.id ?? "new"}
+      data={result.workspace}
+      character={character}
+    />
+  );
 }

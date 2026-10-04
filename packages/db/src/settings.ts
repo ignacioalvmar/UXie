@@ -1,5 +1,4 @@
-import type {
-  LlmProvider} from "@uxie/core";
+import type { LlmProvider } from "@uxie/core";
 import {
   applyLlmSettingsUpdate,
   keyHint,

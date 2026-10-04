@@ -1,6 +1,6 @@
 import "server-only";
 import { after } from "next/server";
-import { TeachingGuideSchema, type Mode } from "@uxie/core";
+import { Mode as ModeSchema, TeachingGuideSchema, type Mode } from "@uxie/core";
 import {
   AccountsRepo,
   DbError,
@@ -13,7 +13,7 @@ import {
 import { createEngine } from "../engine";
 import { serverEnv } from "../env";
 import { serviceDb } from "../supabase/server";
-import type { ChatDeps, ChatStore } from "./turn";
+import type { ChatDeps, ChatStore, OpenResult } from "./turn";
 
 /** Supabase-backed ChatStore (secret-key client; every method is scoped by an explicit check). */
 export class SupabaseChatStore implements ChatStore {
@@ -34,7 +34,13 @@ export class SupabaseChatStore implements ChatStore {
   async ownConversation(studentId: string, conversationId: string) {
     const c = await this.views.ownConversation(studentId, conversationId);
     return c
-      ? { id: c.id, paperId: c.paperId, paperVersionId: c.paperVersionId, status: c.status }
+      ? {
+          id: c.id,
+          paperId: c.paperId,
+          paperVersionId: c.paperVersionId,
+          mode: c.mode,
+          status: c.status,
+        }
       : null;
   }
 
@@ -68,19 +74,22 @@ export class SupabaseChatStore implements ChatStore {
   logEvent(type: string, studentId: string, props: Record<string, unknown>) {
     return this.accounts.logEvent(type, studentId, props);
   }
+  closeConversation(conversationId: string, status: "reset") {
+    return this.conversations.close(conversationId, status);
+  }
+
+  async openConversationForPaper(studentId: string, paperId: string, mode: Mode) {
+    const paper = (await this.views.papersById([paperId])).get(paperId);
+    if (!paper)
+      return { ok: false as const, status: 404, code: "not_found", message: "Paper not found." };
+    return this.openConversation(studentId, paper.slug, mode);
+  }
 
   /**
    * FR-3.2: the first chat action creates the conversation on the paper's current published
    * version, or returns the student's active one there (one per version, unique index).
    */
-  async openConversation(
-    studentId: string,
-    paperSlug: string,
-    mode?: Mode,
-  ): Promise<
-    | { ok: true; conversationId: string; created: boolean }
-    | { ok: false; status: number; code: string; message: string }
-  > {
+  async openConversation(studentId: string, paperSlug: string, mode?: Mode): Promise<OpenResult> {
     const found = await this.views.visiblePaperBySlug(paperSlug);
     if (!found) return { ok: false, status: 404, code: "not_found", message: "Paper not found." };
     const { paper, module } = found;
@@ -138,6 +147,12 @@ export class SupabaseChatStore implements ChatStore {
   }
 }
 
+/** TUTOR_MODES in display order (Understand, Apply, Critique, Build). */
+export function enabledModes(): Mode[] {
+  const enabled = serverEnv().TUTOR_MODES;
+  return ModeSchema.options.filter((m) => enabled.includes(m));
+}
+
 export function chatStore() {
   return new SupabaseChatStore(serviceDb());
 }
@@ -153,6 +168,7 @@ export function chatDeps(store: ChatStore = chatStore()): ChatDeps {
       perMinuteLimit: env.PER_MINUTE_TURN_LIMIT,
       ceilingEur: env.MONTHLY_SPEND_CEILING_EUR,
     },
+    modes: enabledModes(),
     after: (task) => after(task),
     onError: (e, context) => {
       // Codes and ids only; never message content (NFR-4).

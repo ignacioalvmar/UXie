@@ -159,3 +159,27 @@ export const LibraryIcon = (p: P) => (
     <path d="M16.5 4.5l3.8 1-3.6 14-3.8-1" />
   </Icon>
 );
+export const LifebuoyIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="4" />
+    <path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6" />
+  </Icon>
+);
+export const ThumbUpIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M7 10v11H4V10z" />
+    <path d="M7 10l4-7a2.5 2.5 0 0 1 3 2.6L13.5 10H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 21H7" />
+  </Icon>
+);
+export const ThumbDownIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M7 14V3H4v11z" />
+    <path d="M7 14l4 7a2.5 2.5 0 0 0 3-2.6L13.5 14H19a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.8 3H7" />
+  </Icon>
+);
+export const ChevronDownIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M6 9l6 6 6-6" />
+  </Icon>
+);

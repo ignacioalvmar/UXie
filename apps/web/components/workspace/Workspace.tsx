@@ -254,6 +254,9 @@ export function Workspace({ data, character }: { data: WorkspaceDto; character: 
             starterQuestions={data.starterQuestions}
             objectives={data.objectives}
             chatOpen={data.chatOpen}
+            modes={data.modes}
+            projectDescription={data.projectDescription}
+            superseded={!!data.conversation && !version.isCurrent && paper.status === "published"}
             onCite={onCite}
             onKeepReading={onKeepReading}
           />

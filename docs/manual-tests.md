@@ -263,3 +263,50 @@ Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, against the dev server o
   `pnpm db:reset` + `pnpm db:seed-storage` before it.
 - **Pending for M6 sign-off:** the M5 carry-over (real provider switch on `/admin/settings/ai`
   with a valid OpenAI/Gemini key, then a chat turn on it) — needs a key; the debug panel is M8.
+
+## M7: Tutor features in UI
+
+Automated: `pnpm check` (route tests on the real engine with in-memory ports and the mock LLM:
+"Explain it to me" ×3 → tutor messages `hint:0`, `hint:1`, `explain`, then `check` on the next
+turn with counters reset; Apply mode without a project → prompt says `Student project: UNKNOWN`,
+after saving one it appears in later prompts; a scripted mastery answer → U1 `demonstrated` with
+evidence, U2 becomes current and the next prompts work on U2; mode-switch rules (unavailable 400,
+same mode 409, retried switch replays); Start over (old `reset`, new active in the same mode,
+busy 409, others 404, retired 410); request routing per turn; `TUTOR_MODES` parsing).
+`pnpm test:db` (feedback: one row per message and student, replaced on re-rating, refused for
+others' and student messages; reset frees the version for a new active conversation).
+
+Setup: as M6. `LLM_PROVIDER=mock`; sign in as `student.a@thi.de` / `uxie-dev-password`.
+
+1. Open `/papers/visible-cues`: the chat header shows "Understand" / "Apply to UX" pills and
+   "Progress: 4 ideas to explore". Critique and Build are hidden (`TUTOR_MODES` default).
+2. Pick a starter chip, then press "Explain it to me" three times (wait for each reply) and send
+   an answer. Name lines read "· Hint", "· Hint", "· Explanation", "· Check"; event pills
+   "Explain it to me" appear in the log.
+3. Open Progress: the drawer lists the four objectives with "Not started" / "In progress" /
+   "Demonstrated" (icon + text), page chips (open the PDF and close the drawer) and
+   "Work on this in Apply to UX mode" for A1. Esc closes it and focus returns to the button.
+4. Click "Apply to UX": a "Switched to Apply to UX mode" pill and a handover reply. With no saved
+   project the project card appears: "Save to my profile and send" stores it (see `/account`)
+   and sends it; the card is replaced by "applies the paper to your project from your profile".
+5. Press 👎 on a reply: the comment field opens; send a comment. Reload: 👎 stays pressed;
+   `select rating, comment from feedback` shows one row.
+6. "Start over" → confirm: the URL gets a new `?c=`, the mode is kept, the progress is empty and
+   UXie greets once. `/conversations` lists the old conversation as reset; it opens read-only.
+7. Mobile (375 px): the mode pill "Mode: Apply to UX ▾" opens a menu (arrow keys, Esc);
+   "Explain it to me" and "Start over" sit under the composer; Progress opens as a bottom sheet.
+8. Superseded banner: `update paper_versions set status='superseded'` is not enough on its own —
+   insert a second published version and point `papers.current_version_id` at it, then open the
+   old conversation (`?c=`): "A newer version of this paper is available" with the link to the
+   current version. Restore afterwards (`pnpm db:reset` + `pnpm db:seed-storage`).
+
+Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, dev server on :3000).
+
+- `pnpm check` green; `pnpm test:db`: 28/28.
+- Steps 1–4 (with a student that already had a saved project: the profile note path), 5 (👎 +
+  comment field), 6 and 7: pass. Found and fixed during the run: the automatic `start` after
+  Start over was lost under React StrictMode's double mount (now deferred and sent once); the
+  composer could keep a six-line height from a measurement taken before fonts settled (now
+  re-measured on font load and resize).
+- Not yet run by hand: step 4's project card with a student without a project (covered by the
+  route test), step 8 (needs a second version; M8 adds version upload).

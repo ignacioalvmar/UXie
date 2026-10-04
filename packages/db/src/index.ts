@@ -6,3 +6,4 @@ export * from "./repos/conversations";
 export * from "./repos/usage";
 export * from "./repos/accounts";
 export * from "./repos/studentViews";
+export * from "./repos/feedback";

@@ -1,13 +1,14 @@
 import "server-only";
 import type { ExtractionWarning, Mode } from "@uxie/core";
 import {
+  FeedbackRepo,
   StudentViewsRepo,
   type ChatMessageRow,
   type ConversationRow,
   type GuideSummary,
 } from "@uxie/db";
 import { progressDto } from "./chat/turn";
-import type { ChatMessageDto, ConversationDto, ProgressDto } from "./chat/types";
+import type { ChatMessageDto, ConversationDto, FeedbackDto, ProgressDto } from "./chat/types";
 import { buildLibrary, recentConversationIds, type LibraryDto } from "./library";
 import { serviceDb } from "./supabase/server";
 
@@ -60,26 +61,32 @@ export async function loadLibrary(studentId: string): Promise<LibraryDto> {
   });
 }
 
-export function messageDto(m: ChatMessageRow): ChatMessageDto {
+export function messageDto(m: ChatMessageRow, feedback: FeedbackDto | null = null): ChatMessageDto {
   return {
     id: m.id,
     role: m.role,
     content: m.content,
     status: m.status,
     event: m.event,
+    mode: m.mode,
     helpLevel: m.helpLevel,
     clientMessageId: m.clientMessageId,
     citations: m.citations,
+    feedback,
     createdAt: m.createdAt.toISOString(),
   };
 }
 
 export async function conversationDto(
+  studentId: string,
   conv: ConversationRow,
   guide: GuideSummary,
   currentVersionId: string | null,
 ): Promise<ConversationDto> {
-  const messages = await views().messages(conv.id);
+  const [messages, feedback] = await Promise.all([
+    views().messages(conv.id),
+    new FeedbackRepo(serviceDb()).forConversation(studentId, conv.id),
+  ]);
   const generating =
     conv.generatingSince !== null && Date.now() - conv.generatingSince.getTime() < LOCK_STALE_MS;
   return {
@@ -89,7 +96,7 @@ export async function conversationDto(
     paperVersionId: conv.paperVersionId,
     isCurrentVersion: conv.paperVersionId === currentVersionId,
     generating,
-    messages: messages.map(messageDto),
+    messages: messages.map((m) => messageDto(m, feedback.get(m.id) ?? null)),
     progress: progressDto(conv.state, guide),
   };
 }
@@ -118,7 +125,10 @@ export interface WorkspaceDto {
   conversation: ConversationDto | null;
   /** New turns allowed: paper published and the conversation (if any) active. */
   chatOpen: boolean;
-  defaultMode: Mode;
+  /** Focus modes offered (TUTOR_MODES, D11), in display order. */
+  modes: Mode[];
+  /** The student's saved project (FR-1.5): Apply mode asks for one when it is missing. */
+  projectDescription: string | null;
 }
 
 export type WorkspaceResult =
@@ -134,7 +144,8 @@ export type WorkspaceResult =
 export async function loadWorkspace(
   studentId: string,
   slug: string,
-  conversationId?: string | null,
+  conversationId: string | null,
+  student: { modes: Mode[]; projectDescription: string | null },
 ): Promise<WorkspaceResult> {
   const repo = views();
   const found = await repo.visiblePaperBySlug(slug);
@@ -163,7 +174,9 @@ export async function loadWorkspace(
   const siblings = moduleIndex >= 0 ? await repo.publishedPapers([module.id]) : [];
   const paperIndex = siblings.findIndex((p) => p.id === paper.id);
 
-  const conversation = conv ? await conversationDto(conv, guide, paper.currentVersionId) : null;
+  const conversation = conv
+    ? await conversationDto(studentId, conv, guide, paper.currentVersionId)
+    : null;
   const objectives =
     conversation?.progress ??
     guide.objectives.map((o, i) => ({
@@ -203,7 +216,8 @@ export async function loadWorkspace(
         paper.status === "published" &&
         guide.objectives.length > 0 &&
         (conversation ? conversation.status === "active" : version.status === "published"),
-      defaultMode: "understand",
+      modes: student.modes,
+      projectDescription: student.projectDescription,
     },
   };
 }

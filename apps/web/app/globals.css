@@ -147,3 +147,8 @@ body {
     animation: none;
   }
 }
+
+/* Native <dialog> sheets (progress drawer, confirmations): scrim from the tokens. */
+.uxie-sheet::backdrop {
+  background: var(--color-scrim);
+}
