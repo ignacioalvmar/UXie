@@ -138,10 +138,15 @@ export async function updatePassword(_prev: AuthFormState, form: FormData): Prom
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/auth/reset?expired=1");
   const { error } = await supabase.auth.updateUser({ password });
-  if (error)
+  if (error) {
+    const failure = classifyAuthError(error);
     return {
-      failure: classifyAuthError(error) === "password_leaked" ? "password_leaked" : "network",
+      failure:
+        failure === "password_leaked" || failure === "password_same" || failure === "password_short"
+          ? failure
+          : "network",
     };
+  }
   redirect("/");
 }
 

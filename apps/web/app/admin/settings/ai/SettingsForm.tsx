@@ -127,7 +127,10 @@ export function SettingsForm({ view }: { view: SettingsView }) {
                 value={roles[role].provider}
                 onChange={(e) => setRole(role, { provider: e.target.value as LlmProvider })}
               >
-                {PROVIDERS.map((p) => (
+                {(PROVIDERS.includes(roles[role].provider)
+                  ? PROVIDERS
+                  : [roles[role].provider, ...PROVIDERS]
+                ).map((p) => (
                   <option key={p} value={p}>
                     {PROVIDER_LABEL[p]}
                   </option>

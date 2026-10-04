@@ -49,6 +49,7 @@ describe("auth error mapping (HANDOFF §6.2)", () => {
     expect(
       classifyAuthError({ status: 403, message: "Only university email addresses can register." }),
     ).toBe("domain");
+    expect(classifyAuthError({ code: "same_password", status: 422 })).toBe("password_same");
     expect(classifyAuthError({ status: 500 })).toBe("network");
   });
 

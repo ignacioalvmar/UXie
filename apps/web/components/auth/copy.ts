@@ -28,6 +28,8 @@ export function failureCopy(
       return {
         password: "This password has appeared in a data breach. Please choose a different one.",
       };
+    case "password_same":
+      return { password: "That is your current password. Choose a different one." };
     case "invite":
       return { invite: "That invite code doesn't match. Check with your instructor." };
     case "unverified":

@@ -184,5 +184,22 @@ into `.env` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
    then `pnpm uxie doctor --ping` with the same settings).
 8. `pnpm uxie doctor` → database, storage bucket and domain allow-list all ✓.
 
-Last run: not yet (Docker Desktop was not available in the implementation session). The
-automated `pnpm test:db` suite runs in CI.
+Last run: 2026-10-04 (local stack, Docker; `LLM_PROVIDER=mock`). Local web env goes in the
+git-ignored `apps/web/.env.local` (values from `supabase status -o env`).
+
+- `pnpm test:db`: 18/18 locally and in the CI `db` job.
+- Step 1: pass (sign-up → Mailpit link → onboarding with Miso → library with the seeded paper).
+- Step 2: form shows the domain error; the hook-level rejection is covered by `pnpm test:db`.
+- Step 3: pass (alert focused, email kept, password cleared, button "Try again").
+- Step 4: pass, including the expired link. Found and fixed: re-using the current password
+  showed "Something went wrong"; it now says "That is your current password…" (`same_password`).
+- Step 5: pass for profile and research consent (stored with version and timestamp); "sign out on
+  all devices" not separately exercised.
+- Step 6: pass (404 for a student on `/admin/settings/ai`).
+- Step 7: pass with a made-up OpenAI key: Test connection reports `auth_failed` for the tutor and
+  success for the mock roles; Save stores only `v1.…` ciphertext with hint `…abcd`, the audit
+  event lists `keys_changed: ["openai"]` without the value, and the reloaded page and its HTML
+  contain no key. Found and fixed: the provider dropdown showed "Anthropic" when env used `mock`.
+  **Pending:** the real provider switch with a valid OpenAI/Gemini key and a test-chat turn on it
+  (needs a key, and the chat UI from M6).
+- Step 8: pass (database, storage bucket, domains agree).

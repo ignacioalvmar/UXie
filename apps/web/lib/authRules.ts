@@ -50,6 +50,7 @@ export type AuthFailure =
   | "network"
   | "password_short"
   | "password_leaked"
+  | "password_same"
   | "invite";
 
 /** Map a Supabase Auth error to a UI condition. Never reveals which credential was wrong. */
@@ -63,6 +64,7 @@ export function classifyAuthError(err: {
   if (err.status === 429 || code === "over_request_rate_limit" || code.includes("rate_limit"))
     return "rate_limited";
   if (code === "email_not_confirmed") return "unverified";
+  if (code === "same_password") return "password_same";
   if (code === "weak_password")
     return msg.includes("pwned") || msg.includes("breach") || msg.includes("leaked")
       ? "password_leaked"
