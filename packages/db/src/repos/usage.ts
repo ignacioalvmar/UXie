@@ -106,3 +106,24 @@ export class SupabaseProfileRepo {
     return { projectDescription: row.project_description };
   }
 }
+
+/**
+ * Operational alerts to the instructor (PRD §17.3, migration 0008): `claim` succeeds once per kind
+ * and period, so concurrent turns send one email; `release` lets the next turn retry after a failed
+ * send.
+ */
+export class AlertRepo {
+  constructor(private readonly db: Db) {}
+
+  async claim(kind: string, period: string): Promise<boolean> {
+    const res = await this.db.from("alerts_sent").insert({ kind, period });
+    if (!res.error) return true;
+    if (res.error.code === "23505") return false;
+    throw new Error(`alert claim: ${res.error.message}`);
+  }
+
+  async release(kind: string, period: string): Promise<void> {
+    const res = await this.db.from("alerts_sent").delete().eq("kind", kind).eq("period", period);
+    if (res.error) throw new Error(`alert release: ${res.error.message}`);
+  }
+}

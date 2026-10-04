@@ -51,11 +51,19 @@ export class IngestQueue {
     await this.finish(jobId, { status: "failed", error: error.slice(0, 2000) });
   }
 
-  /** An infrastructure error with attempts left: back to the queue for the next poll. */
-  async requeue(jobId: string, error: string): Promise<void> {
+  /**
+   * An infrastructure error with attempts left, or a worker shutdown (then `attempts` gives the
+   * claimed attempt back): back to the queue for the next poll.
+   */
+  async requeue(jobId: string, error: string, attempts?: number): Promise<void> {
     const res = await this.db
       .from("ingest_jobs")
-      .update({ status: "queued", error: error.slice(0, 2000), started_at: null })
+      .update({
+        status: "queued",
+        error: error.slice(0, 2000),
+        started_at: null,
+        ...(attempts === undefined ? {} : { attempts }),
+      })
       .eq("id", jobId);
     if (res.error) throw new DbError(`requeue job: ${res.error.message}`, res.error.code);
   }

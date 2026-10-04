@@ -113,6 +113,9 @@ export const BaseEnvSchema = z.object({
   // Worker
   WORKER_POLL_MS: withDefault(int.positive(), 5000),
   WORKER_JOB_TIMEOUT_MS: withDefault(int.positive(), 900_000),
+  // NFR-17: on SIGTERM the current job may finish within this time, then it is re-queued.
+  // Keep it below the host's shutdown delay (Render: 30 s by default).
+  WORKER_SHUTDOWN_GRACE_MS: withDefault(int.nonnegative(), 20_000),
   ALERT_EMAIL: opt(z.email()),
 
   // Transactional mail from the app (FR-8.3 deletion confirmation; ADR-028). Auth emails go

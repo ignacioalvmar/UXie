@@ -289,6 +289,23 @@ describe("FR-3.4 / PRD §4.4 chat turn route", () => {
     expect(w.conversations.messages).toHaveLength(0);
   });
 
+  it("PRD §17.3 spend alert fires from 80 % of the ceiling, also when chat is paused", async () => {
+    const alerts: unknown[] = [];
+    const deps = { ...w.deps, onSpendAlert: async (a: unknown) => void alerts.push(a) };
+    w.counts.spendEur = 79;
+    await chunks(await handleTurn(deps, say(w, "Below the threshold.")));
+    await Promise.all(w.pending);
+    expect(alerts).toHaveLength(0);
+    w.counts.spendEur = 80;
+    await chunks(await handleTurn(deps, say(w, "At the threshold.")));
+    await Promise.all(w.pending);
+    expect(alerts).toEqual([{ month: "2026-10", spendEur: 80, ceilingEur: 100 }]);
+    w.counts.spendEur = 120;
+    expect((await handleTurn(deps, say(w, "Paused."))).status).toBe(503);
+    await Promise.all(w.pending);
+    expect(alerts).toHaveLength(2);
+  });
+
   it("FR-9.2 daily limit → 429 with the reset time", async () => {
     w.counts.turnsToday = 120;
     const res = await handleTurn(w.deps, say(w, "Hello?"));

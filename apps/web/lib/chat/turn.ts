@@ -7,7 +7,7 @@ import type { LearnerState, Mode, TurnEvent } from "@uxie/core";
 import type { GuideSummary } from "@uxie/db";
 import { TutorError, type TurnResult, type TurnStream } from "@uxie/tutor";
 import { turnDebugDto } from "../admin/debug";
-import { checkLimits, MINUTE_MS, monthStart, utcDay } from "../limits";
+import { checkLimits, MINUTE_MS, monthKey, monthStart, spendAlertDue, utcDay } from "../limits";
 import type { ApiErrorBody, ChatUIMessage, ProgressDto, TutorMeta } from "./types";
 
 /**
@@ -68,6 +68,11 @@ export interface ChatDeps {
   /** Instructor test chats (FR-6.5): add the debug panel data to the finish metadata. */
   debug?: boolean;
   now?: () => Date;
+  /**
+   * PRD §17.3: called (via `after`) when this month's spend reached 80 % of the ceiling. The
+   * implementation sends at most one email per month.
+   */
+  onSpendAlert?: (alert: { month: string; spendEur: number; ceilingEur: number }) => Promise<void>;
   onError?: (e: unknown, context: Record<string, unknown>) => void;
 }
 
@@ -150,6 +155,12 @@ export async function handleTurn(deps: ChatDeps, input: TurnInput): Promise<Resp
     store.turnsToday(input.studentId, utcDay(now)),
     store.turnsSince(input.studentId, new Date(now.getTime() - MINUTE_MS)),
   ]);
+  if (deps.onSpendAlert && spendAlertDue(spendEur, deps.limits.ceilingEur))
+    deps.after(
+      deps
+        .onSpendAlert({ month: monthKey(now), spendEur, ceilingEur: deps.limits.ceilingEur })
+        .catch(() => {}),
+    );
   const block = checkLimits({
     now,
     spendEur,

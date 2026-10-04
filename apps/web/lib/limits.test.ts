@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { checkLimits, monthStart, nextUtcMidnight, type LimitInput } from "./limits";
+import {
+  checkLimits,
+  monthKey,
+  monthStart,
+  nextUtcMidnight,
+  spendAlertDue,
+  type LimitInput,
+} from "./limits";
 
 const now = new Date("2026-10-15T10:00:30Z");
 const base: LimitInput = {
@@ -55,5 +62,20 @@ describe("FR-9.2 turn limits", () => {
       "2027-01-01T00:00:00.000Z",
     );
     expect(monthStart(now).toISOString()).toBe("2026-10-01T00:00:00.000Z");
+  });
+});
+
+describe("spend alert at 80 % of the ceiling (PRD §17.3)", () => {
+  it("is due from 80 % on, including past the ceiling", () => {
+    expect(spendAlertDue(79.99, 100)).toBe(false);
+    expect(spendAlertDue(80, 100)).toBe(true);
+    expect(spendAlertDue(130, 100)).toBe(true);
+  });
+  it("never fires without a ceiling", () => {
+    expect(spendAlertDue(1000, 0)).toBe(false);
+  });
+  it("is keyed by UTC calendar month", () => {
+    expect(monthKey(new Date("2026-10-31T23:59:59Z"))).toBe("2026-10");
+    expect(monthKey(new Date("2026-11-01T00:00:00Z"))).toBe("2026-11");
   });
 });

@@ -31,9 +31,16 @@ const HEARTBEAT_NAME = "ingest-worker";
 let prompts: GuidePrompts | undefined;
 const controller = new AbortController();
 let stopping = false;
+// NFR-17: finish the current job within WORKER_SHUTDOWN_GRACE_MS, then abort it; processJob
+// re-queues an aborted job at once. A second signal aborts immediately.
 const stop = (signal: string) => {
-  log.info({ signal }, "shutdown requested; finishing current job");
+  if (stopping) return controller.abort();
+  log.info(
+    { signal, graceMs: env.WORKER_SHUTDOWN_GRACE_MS },
+    "shutdown requested; finishing current job",
+  );
   stopping = true;
+  setTimeout(() => controller.abort(), env.WORKER_SHUTDOWN_GRACE_MS).unref();
 };
 process.on("SIGTERM", () => stop("SIGTERM"));
 process.on("SIGINT", () => stop("SIGINT"));

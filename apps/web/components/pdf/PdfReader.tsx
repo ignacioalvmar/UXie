@@ -393,13 +393,18 @@ export default function PdfReader({
         </div>
       )}
 
+      {/* Focusable so keyboard users can scroll the pages with the arrow keys (WCAG 2.1.1). */}
       <div
         ref={scroller}
+        role="group"
+        aria-label="Paper pages"
+        tabIndex={0}
         className="uxie-pdf min-h-0 flex-1 overflow-auto bg-reader-ground px-4 py-7"
       >
         {accessible ? (
           <div
             ref={textPane}
+            role="group"
             tabIndex={-1}
             aria-label={`Accessible text, page ${current}`}
             className="mx-auto flex max-w-[680px] flex-col gap-3 rounded-[6px] bg-surface p-7 shadow-sm"
@@ -447,6 +452,7 @@ export default function PdfReader({
                   else pageEls.current.delete(n);
                 }}
                 data-page={n}
+                role="group"
                 tabIndex={-1}
                 aria-label={`Page ${n}`}
                 onMouseEnter={() => (holdHighlight.current = cited === n)}

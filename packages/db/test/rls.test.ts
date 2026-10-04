@@ -183,6 +183,7 @@ describe("RLS: students (PRD §9.2)", () => {
       "deletion_ledger",
       "worker_heartbeats",
       "llm_settings",
+      "alerts_sent",
     ]) {
       expect((await rows(studentA.from(table).select("*"))).n, table).toBe(0);
     }

@@ -1,8 +1,9 @@
 import "server-only";
 import { after } from "next/server";
-import { Mode as ModeSchema, TeachingGuideSchema, type Mode } from "@uxie/core";
+import { formatEur, Mode as ModeSchema, TeachingGuideSchema, type Mode } from "@uxie/core";
 import {
   AccountsRepo,
+  AlertRepo,
   DbError,
   StudentViewsRepo,
   SupabaseConversationRepo,
@@ -12,6 +13,7 @@ import {
 } from "@uxie/db";
 import { createEngine } from "../engine";
 import { serverEnv } from "../env";
+import { sendMail } from "../mail";
 import { serviceDb } from "../supabase/server";
 import type { ChatDeps, ChatStore, OpenResult } from "./turn";
 
@@ -170,6 +172,7 @@ export function chatDeps(store: ChatStore = chatStore()): ChatDeps {
     },
     modes: enabledModes(),
     after: (task) => after(task),
+    ...(env.ALERT_EMAIL ? { onSpendAlert: sendSpendAlert } : {}),
     onError: (e, context) => {
       // Codes and ids only; never message content (NFR-4).
       console.error(
@@ -181,4 +184,27 @@ export function chatDeps(store: ChatStore = chatStore()): ChatDeps {
       );
     },
   };
+}
+
+/**
+ * PRD §17.3: email ALERT_EMAIL once per month when spend reaches 80 % of the ceiling. A failed or
+ * unconfigured send releases the claim, so a later turn tries again.
+ */
+async function sendSpendAlert(a: { month: string; spendEur: number; ceilingEur: number }) {
+  const env = serverEnv();
+  if (!env.ALERT_EMAIL) return;
+  const alerts = new AlertRepo(serviceDb());
+  if (!(await alerts.claim("spend_80", a.month))) return;
+  const outcome = await sendMail({
+    to: env.ALERT_EMAIL,
+    subject: `UXie: ${Math.floor((a.spendEur / a.ceilingEur) * 100)} % of the monthly spend ceiling used`,
+    text: [
+      `Model spend for ${a.month} is ${formatEur(a.spendEur)} of the ${formatEur(a.ceilingEur)} ceiling.`,
+      "New tutor replies stop for everyone when the ceiling is reached.",
+      "",
+      `Usage and costs: ${new URL("/admin/usage", env.APP_URL).toString()}`,
+      "To raise the ceiling, change MONTHLY_SPEND_CEILING_EUR in Vercel and redeploy.",
+    ].join("\n"),
+  });
+  if (outcome !== "sent") await alerts.release("spend_80", a.month);
 }

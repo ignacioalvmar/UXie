@@ -9,10 +9,20 @@ import {
   SupabaseEnvSchema,
   type BaseEnv,
 } from "@uxie/core";
-import { AccountsRepo, createServiceClient, pingDb } from "@uxie/db";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  AccountsRepo,
+  createServiceClient,
+  loadEffectiveSettings,
+  pingDb,
+  ReviewRepo,
+  type Db,
+} from "@uxie/db";
 import { catalogEntry, pingRoles } from "@uxie/llm";
 import { BASE_PROMPT_FILES, loadPromptDir } from "@uxie/tutor";
-import { promptsDir } from "../paths";
+import { promptsDir, repoRoot } from "../paths";
+import { launchChecks, MANUAL_LAUNCH_ITEMS } from "./launch";
 
 const REQUIRED_PROMPTS = [
   ...BASE_PROMPT_FILES,
@@ -25,7 +35,8 @@ const REQUIRED_PROMPTS = [
 ];
 
 /** `pnpm uxie doctor` (PRD §10.10). Exit code 1 if anything is wrong. */
-export async function doctorCommand(opts: { ping?: boolean }): Promise<void> {
+export async function doctorCommand(opts: { ping?: boolean; launch?: boolean }): Promise<void> {
+  if (opts.launch) return launchCommand();
   let ok = true;
   const fail = (what: string, why: string) => {
     ok = false;
@@ -99,4 +110,59 @@ async function checkDatabase(env: BaseEnv, fail: (what: string, why: string) => 
   } catch (e) {
     fail("database", (e as Error).message);
   }
+}
+
+/**
+ * `pnpm uxie doctor --launch` (PRD §17.3, M10): run with the production env exported. Fails on
+ * anything that blocks the pilot, warns on what should be set, then lists the manual items.
+ */
+async function launchCommand(): Promise<void> {
+  const env = parseEnv(BaseEnvSchema, process.env);
+  const supa = SupabaseEnvSchema.safeParse(process.env);
+  let settings = llmSettingsFromEnv(env);
+  let readyPapers: number | null = null;
+  let heartbeatAgeMs: number | null = null;
+  if (supa.success) {
+    const db = createServiceClient(
+      supa.data.NEXT_PUBLIC_SUPABASE_URL,
+      supa.data.SUPABASE_SECRET_KEY,
+    );
+    settings = (await loadEffectiveSettings(db, settings, env.SETTINGS_ENCRYPTION_KEY)).settings;
+    readyPapers = await countReadyPapers(db);
+    const beats = await new ReviewRepo(db).workerHeartbeats();
+    const newest = Math.max(...beats.map((b) => Date.parse(b.lastSeenAt)));
+    heartbeatAgeMs = beats.length ? Date.now() - newest : null;
+  }
+  const checks = launchChecks({
+    env,
+    supabaseUrl: supa.success ? supa.data.NEXT_PUBLIC_SUPABASE_URL : null,
+    settings,
+    privacyNotice: readFileSync(resolve(repoRoot, "apps/web/content/privacy-notice.md"), "utf8"),
+    readyPapers,
+    heartbeatAgeMs,
+  });
+  const mark = { ok: "✓", warn: "!", fail: "✗" } as const;
+  for (const c of checks) console.log(`${mark[c.level]} ${c.what.padEnd(9)} ${c.detail}`);
+  console.log("\nManual (PRD §17.3; tick them in docs/launch-checklist.md):");
+  for (const item of MANUAL_LAUNCH_ITEMS) console.log(`  [ ] ${item}`);
+  if (checks.some((c) => c.level === "fail")) process.exitCode = 1;
+}
+
+/** Published papers whose current version is published and has an approved guide. */
+async function countReadyPapers(db: Db): Promise<number> {
+  const papers = await db
+    .from("papers")
+    .select("current_version_id")
+    .eq("status", "published")
+    .not("current_version_id", "is", null);
+  if (papers.error) throw new Error(`papers: ${papers.error.message}`);
+  const ids = (papers.data as { current_version_id: string }[]).map((p) => p.current_version_id);
+  if (!ids.length) return 0;
+  const guides = await db
+    .from("teaching_guides")
+    .select("version_id")
+    .in("version_id", ids)
+    .eq("status", "approved");
+  if (guides.error) throw new Error(`guides: ${guides.error.message}`);
+  return guides.data.length;
 }

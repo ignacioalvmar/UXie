@@ -187,10 +187,13 @@ export async function runIngestJob(
       onStep: (step) => store.setStep(versionId, step),
     });
   } catch (e) {
-    if (!(e instanceof ExtractionError)) throw e;
+    // An aborted run (worker shutdown) is re-queued by the caller, never a failed version.
+    if (!(e instanceof ExtractionError) || deps.signal?.aborted) throw e;
     await store.markFailed(versionId, e.message);
     return { status: "failed", error: e.message };
   }
+  // Steps may swallow an abort (a failed guide draft becomes an issue): never save a cut-short run.
+  deps.signal?.throwIfAborted();
   await store.saveExtraction(versionId, {
     sha256: result.sha256,
     extractor: result.extractor,
