@@ -203,3 +203,63 @@ git-ignored `apps/web/.env.local` (values from `supabase status -o env`).
   **Pending:** the real provider switch with a valid OpenAI/Gemini key and a test-chat turn on it
   (needs a key, and the chat UI from M6).
 - Step 8: pass (database, storage bucket, domains agree).
+
+## M6: Student library and workspace
+
+Automated: `pnpm check` (limits: ceiling 503, daily and per-minute 429 with reset times;
+chat turn route on the real engine with in-memory ports and the mock LLM: streamed reply with
+citations and progress but no guide internals, double submit with one `clientMessageId` → one
+student message and one reply, concurrent submit → 409, provider failure → tutor message
+`failed` and state unchanged then Retry succeeds, ownership 404, closed 409, retired 410,
+start-event rules; library statuses, numbering, next-in-order, search; message rendering
+helpers; resume transcript). `pnpm test:db` (generation lock incl. concurrent acquires and
+stale takeover, lock/turn functions refused to browser roles, per-minute counter, student read
+models: owner scoping, draft papers hidden, guide reduced to student-safe parts, superseded
+version readable only with an own conversation).
+
+Setup: as M5, plus `pnpm exec supabase migration up` (or `pnpm db:reset`) for
+`0005_chat.sql` and `pnpm db:seed-storage` to upload the seeded PDF. `LLM_PROVIDER=mock`;
+sign in as `student.a@thi.de` / `uxie-dev-password`.
+
+1. Library `/`: "Next in order" shows the visible-cues paper, status "Not started"; search
+   `signifier` matches it via a key concept and mirrors `?q=`; Esc clears.
+2. Open the paper: the PDF renders with "Page 1 of 7"; no conversation exists yet
+   (`select count(*) from conversations` unchanged). Page arrows, zoom, search (`toast` →
+   "Found on pages 3, 4, 6", hits marked) and "Accessible text" (page text + limits note) work.
+3. Click a starter chip → the conversation is created, the reply streams, the URL gains `?c=`,
+   the student message shows "Saved". Send four more answers (5 turns): the name line shows
+   "· Hint", "· Explanation", "· Check" as the help ladder advances; the last question is bold.
+4. Scroll the PDF to page 4, click a `p. 1` chip → the reader jumps to page 1, outlines it with
+   "Cited in chat · p. 1" for about 4 s, and focus moves to the page.
+5. Reload → the conversation resumes with all messages; `/` shows "Continue where you left
+   off" and "In conversation · 0 of 4 ideas"; `/conversations` lists it under the paper.
+6. Mobile viewport (375 px): Read/Chat tabs; a citation chip switches to Read with the
+   highlight and a "Back to chat" pill; the library uses module tabs and the bottom tab bar.
+7. Double submit / concurrency (browser console on the workspace):
+   POST the same `clientMessageId` twice to `/api/conversations/:id/messages` → both 200,
+   the second replays (`"replayed":true`), one student row; a message containing
+   `[mock:slow]` followed 1.5 s later by another → the second answers `409 busy`.
+8. Send `Testing a failure [mock:fail]` → "Pip couldn't reply … Your message is saved." with
+   Try again; the DB shows the tutor message `failed` (`provider_error`) and the state is
+   unchanged; Try again → reply arrives, still one student row; `generating_since` is null.
+9. Spend ceiling: `insert into llm_calls (purpose, provider, model, cost_eur, ok) values
+('tutor','mock','m6-ceiling-test',1000,true)` → sending shows "UXie is paused", the text
+   returns to the composer, the PDF still pages and searches. Delete the row afterwards.
+10. Retire the paper (`update papers set status='retired'`) → `/papers/visible-cues` shows
+    the "no longer available" page; `/conversations` still lists the conversation and opens it
+    read-only. Restore `published` afterwards.
+
+Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, against the dev server on :3000).
+
+- `pnpm check`: 356 tests green; `pnpm test:db`: 25/25; `pnpm --filter @uxie/web build` ok.
+- Steps 1–10: pass. Found and fixed during the run: the seeded version id is not an RFC 4122 v4
+  UUID, so the PDF and pages routes answered 404 (route id check relaxed to the Postgres uuid
+  shape); the mobile header character ignored `lg:hidden`; the chat log did not stay at the
+  bottom after late layout on resume; a new conversation did not always reach `?c=`.
+- Note: running `next build` while `next dev` serves the same app left the dev server with a
+  stale route table (nested API routes 404) until the route files were touched.
+- Note: `pnpm test:db` expects the seed state. Delete the conversations created by this script
+  (`delete from conversations where student_id = '00000000-0000-4000-a000-000000000002'`) or run
+  `pnpm db:reset` + `pnpm db:seed-storage` before it.
+- **Pending for M6 sign-off:** the M5 carry-over (real provider switch on `/admin/settings/ai`
+  with a valid OpenAI/Gemini key, then a chat turn on it) — needs a key; the debug panel is M8.

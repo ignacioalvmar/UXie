@@ -6,7 +6,7 @@ import {
   type Mode,
   type TeachingGuide,
 } from "@uxie/core";
-import { must, NotFoundError, type Db } from "../client";
+import { DbError, must, NotFoundError, type Db } from "../client";
 
 /**
  * ConversationRepo port on Supabase (packages/tutor/ports.ts), matched structurally because
@@ -328,6 +328,45 @@ export class SupabaseConversationRepo {
         .maybeSingle(),
       `conversation ${conversationId}`,
     );
+  }
+
+  /**
+   * Not part of the port: the generation lock (PRD §4.4 step 3). False when another turn holds
+   * it; locks older than two minutes are taken over.
+   */
+  async acquireLock(conversationId: string): Promise<boolean> {
+    const res = await this.db.rpc("acquire_generation_lock", { p_conversation: conversationId });
+    if (res.error) throw new DbError(`acquire lock: ${res.error.message}`, res.error.code);
+    return res.data === true;
+  }
+
+  async releaseLock(conversationId: string): Promise<void> {
+    const res = await this.db.rpc("release_generation_lock", { p_conversation: conversationId });
+    if (res.error) throw new DbError(`release lock: ${res.error.message}`, res.error.code);
+  }
+
+  /** The student's active conversation on a version (one at most, unique index), or null. */
+  async findActive(studentId: string, paperVersionId: string): Promise<DbConversation | null> {
+    const res = await this.db
+      .from("conversations")
+      .select("id, student_id, paper_version_id, mode, state, status, is_test")
+      .eq("student_id", studentId)
+      .eq("paper_version_id", paperVersionId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (res.error) throw new DbError(`active conversation: ${res.error.message}`, res.error.code);
+    return res.data ? toConversation(res.data as ConversationRow) : null;
+  }
+
+  /** Whether a student message with this idempotency key exists (a retry, not a new turn). */
+  async hasClientMessage(conversationId: string, clientMessageId: string): Promise<boolean> {
+    const res = await this.db
+      .from("messages")
+      .select("id", { head: true, count: "exact" })
+      .eq("conversation_id", conversationId)
+      .eq("client_message_id", clientMessageId);
+    if (res.error) throw new DbError(`client message: ${res.error.message}`, res.error.code);
+    return (res.count ?? 0) > 0;
   }
 
   private async touch(conversationId: string) {

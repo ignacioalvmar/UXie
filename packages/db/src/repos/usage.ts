@@ -24,6 +24,23 @@ export class SupabaseUsageRepo {
     if (res.error) throw new Error(`usage: ${res.error.message}`);
     return (res.data as { turns: number } | null)?.turns ?? 0;
   }
+
+  /**
+   * Not part of the port: turns the student started since `since` (typed messages and button
+   * events, test conversations excluded), and the oldest of them, for the per-minute limit.
+   */
+  async turnsSince(
+    studentId: string,
+    since: Date,
+  ): Promise<{ turns: number; oldest: Date | null }> {
+    const res = await this.db.rpc("turns_since", {
+      p_student: studentId,
+      p_since: since.toISOString(),
+    });
+    if (res.error) throw new Error(`turns since: ${res.error.message}`);
+    const row = (res.data as { turns: number; oldest: string | null }[] | null)?.[0];
+    return { turns: row?.turns ?? 0, oldest: row?.oldest ? new Date(row.oldest) : null };
+  }
 }
 
 export interface DbLlmCall {

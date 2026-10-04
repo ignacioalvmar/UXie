@@ -11,10 +11,13 @@ const config: NextConfig = {
   // Workspace packages ship TypeScript source (ADR-013).
   transpilePackages: ["@uxie/core", "@uxie/character", "@uxie/db", "@uxie/llm", "@uxie/tutor"],
   poweredByHeader: false,
-  // The privacy notice is read from disk at request time; ship it with the functions.
+  // Files read from disk at request time ship with their functions: the privacy notice, and the
+  // tutor prompts for the chat routes (lib/engine.ts reads ../../prompts, PRD §8.5).
   outputFileTracingIncludes: {
     "/privacy": ["./content/**"],
     "/onboarding": ["./content/**"],
+    "/api/conversations": ["../../prompts/**"],
+    "/api/conversations/[id]/messages": ["../../prompts/**"],
   },
 };
 

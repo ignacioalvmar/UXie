@@ -1,0 +1,97 @@
+<!doctype html>
+<!-- Static reference exported from the "UXie Chat Workspace" design canvas (Progress.dc.html). Visual reference only: implement with Tailwind + shadcn/ui per HANDOFF.md. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UXie chat, progress panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#5135C9}a:hover{color:#3A2399}
+button:focus-visible,a:focus-visible{outline:3px solid #5135C9;outline-offset:2px}
+</style>
+</head>
+<body>
+<div style="width: 620px; height: 900px; box-sizing: border-box; position: relative; overflow: hidden; background: #FFFFFF; border-left: 1.5px solid #E2DCF0; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; color: #1F1A33">
+
+<div aria-hidden="true" style="position: absolute; inset: 0; display: flex; flex-direction: column; gap: 18px; padding: 92px 20px 0; font-size: 17px; line-height: 1.5">
+<div style="display: flex; justify-content: flex-end"><p style="margin: 0; max-width: 82%; background: #5135C9; color: #FFFFFF; border-radius: 18px 18px 6px 18px; padding: 12px 16px">Oh, I described the signifier. The affordance is that the swipe works at all.</p></div>
+<p style="margin: 0 0 0 68px; max-width: 70%; background: #FFFFFF; border: 1.5px solid #E2DCF0; border-radius: 18px 18px 18px 6px; padding: 12px 16px">Exactly. So what actually changed between the three versions?</p>
+<div style="display: flex; justify-content: flex-end"><p style="margin: 0; max-width: 82%; background: #5135C9; color: #FFFFFF; border-radius: 18px 18px 6px 18px; padding: 12px 16px">Only the cue. The feature itself was the same every time.</p></div>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(31,26,51,.45)"></div>
+
+<div role="dialog" aria-modal="true" aria-labelledby="prog-title" style="position: absolute; top: 0; right: 0; bottom: 0; width: 460px; box-sizing: border-box; background: #FFFFFF; box-shadow: -12px 0 32px rgba(31,26,51,.18); display: flex; flex-direction: column">
+
+<div style="flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 22px 20px 18px 24px; background: #ECE7FA">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h2 id="prog-title" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: -0.01em">Your progress</h2>
+<div aria-hidden="true" style="display: flex; gap: 4px">
+<span style="width: 40px; height: 8px; border-radius: 4px; background: #3F7A2A"></span>
+<span style="width: 40px; height: 8px; border-radius: 4px; background: #5135C9"></span>
+<span style="width: 40px; height: 8px; border-radius: 4px; background: #C9C0E8"></span>
+<span style="width: 40px; height: 8px; border-radius: 4px; background: #C9C0E8"></span>
+</div>
+<p style="margin: 0; font-size: 16px; color: #1F1A33"><strong>1 of 4 ideas demonstrated</strong> · 1 in progress</p>
+</div>
+<button type="button" aria-label="Close progress" style="width: 44px; height: 44px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 12px; background: #FFFFFF; color: #1F1A33"><svg aria-hidden="true" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-width="2.2" viewBox="0 0 24 24" width="20"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 24px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: #4A4563">These are the key ideas of this paper. An idea counts as demonstrated when you explain it in your own words in the chat.</p>
+
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+
+<li style="border: 1.5px solid #E2DCF0; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13px; font-weight: 700; color: #4A4563; text-transform: uppercase; letter-spacing: .04em">Understand</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #E4F1DA; color: #2D5A1B; font-size: 14px; font-weight: 700"><svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewBox="0 0 24 24" width="16"><path d="M5 12l5 5 9-10"></path></svg>Demonstrated</span>
+</div>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; font-weight: 700; text-wrap: pretty">Distinguish an affordance from a signifier using the study’s three conditions.</p>
+<div style="background: #F6F4FB; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #4A4563">What you said</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.45">“The affordance is that the swipe works at all. Only the cue changed between the versions.”</p>
+</div>
+<div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 14px; color: #4A4563">In the paper:
+<button type="button" aria-label="Open page 2 in the paper" style="padding: 1px 9px; border: 0; border-radius: 999px; background: #ECE7FA; color: #3A2399; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.6">p. 2</button>
+<button type="button" aria-label="Open page 5 in the paper" style="padding: 1px 9px; border: 0; border-radius: 999px; background: #ECE7FA; color: #3A2399; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.6">p. 5</button>
+</div>
+</li>
+
+<li style="border: 1.5px solid #5135C9; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13px; font-weight: 700; color: #4A4563; text-transform: uppercase; letter-spacing: .04em">Understand · Current</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #ECE7FA; color: #3A2399; font-size: 14px; font-weight: 700"><svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24" width="16"><path d="M4 5h16v11H9l-5 4z"></path></svg>In progress</span>
+</div>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; font-weight: 700; text-wrap: pretty">Explain how feedback complements signifiers by bridging the gulf of evaluation.</p>
+<div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 14px; color: #4A4563">In the paper:
+<button type="button" aria-label="Open page 2 in the paper" style="padding: 1px 9px; border: 0; border-radius: 999px; background: #ECE7FA; color: #3A2399; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.6">p. 2</button>
+<button type="button" aria-label="Open page 4 in the paper" style="padding: 1px 9px; border: 0; border-radius: 999px; background: #ECE7FA; color: #3A2399; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.6">p. 4</button>
+<button type="button" aria-label="Open page 5 in the paper" style="padding: 1px 9px; border: 0; border-radius: 999px; background: #ECE7FA; color: #3A2399; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.6">p. 5</button>
+</div>
+</li>
+
+<li style="border: 1.5px solid #E2DCF0; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13px; font-weight: 700; color: #4A4563; text-transform: uppercase; letter-spacing: .04em">Critique</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px; color: #575270; font-size: 14px; font-weight: 700"><svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16"><circle cx="12" cy="12" r="8"></circle></svg>Not started</span>
+</div>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; font-weight: 700; text-wrap: pretty">Judge how far the study’s evidence supports claims about real-world discovery.</p>
+<button type="button" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1.5px solid #5135C9; border-radius: 12px; background: #FFFFFF; color: #5135C9; font: inherit; font-weight: 700; font-size: 15px">Work on this in Critique mode</button>
+</li>
+
+<li style="border: 1.5px solid #E2DCF0; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13px; font-weight: 700; color: #4A4563; text-transform: uppercase; letter-spacing: .04em">Apply to UX</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px; color: #575270; font-size: 14px; font-weight: 700"><svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16"><circle cx="12" cy="12" r="8"></circle></svg>Not started</span>
+</div>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; font-weight: 700; text-wrap: pretty">Use signifiers and feedback to justify a concrete UI decision in your own project.</p>
+<button type="button" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1.5px solid #5135C9; border-radius: 12px; background: #FFFFFF; color: #5135C9; font: inherit; font-weight: 700; font-size: 15px">Work on this in Apply to UX mode</button>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</body>
+</html>

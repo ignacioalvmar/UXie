@@ -33,6 +33,25 @@
   --radius-alert: 14px;
   --radius-chip: 16px;
   --radius-sheet: 32px;
+
+  /* docs/design/library/tokens.css */
+  --color-success-bg: #e4f1da;
+  --color-success-ink: #2d5a1b;
+  --color-success-mark: #3f7a2a;
+  --color-progress-empty: #c9c0e8;
+  --color-progress-track: #e2dcf0;
+  --color-highlight: #ffe7a3;
+  --radius-card: 16px;
+  --radius-hero: 20px;
+  --radius-pill: 999px;
+
+  /* docs/design/workspace-chat/tokens.css */
+  --color-reader-ground: #e9e5f2;
+  --color-cite-bg: #fff4d1;
+  --color-cite-line: #e8b93a;
+  --color-illustration-bg: #eef6e8;
+  --color-scrim: rgb(31 26 51 / 0.45);
+  --radius-bubble: 18px;
 }
 
 :root {
@@ -65,6 +84,48 @@ body {
 }
 .uxie-bubble--from-right {
   border-radius: 18px 18px 6px 18px;
+}
+/* Student bubble: speaker on the right (workspace handoff §4.2). */
+.uxie-bubble--student {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: 18px 18px 6px 18px;
+}
+
+@keyframes uxie-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.uxie-typing-dot {
+  animation: uxie-dot 1.2s ease-in-out infinite;
+}
+.uxie-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.uxie-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+/* Character during blocking errors. */
+.uxie-resting {
+  filter: grayscale(0.85);
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .uxie-typing-dot {
+    animation: none;
+  }
+}
+
+/* react-pdf text layer: selectable text over the canvas; search hits are <mark>. */
+.uxie-pdf .textLayer mark {
+  background: var(--color-highlight);
+  color: transparent;
+  padding: 0;
 }
 
 :where(input, textarea, select, button, a, [role="checkbox"], [role="radio"]):focus-visible {
