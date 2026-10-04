@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastStudentTurn, toTranscript } from "./transcript";
+import { lastStudentTurn, requestFor, toTranscript } from "./transcript";
 import type { ChatMessageDto } from "./types";
 
 const msg = (
@@ -8,9 +8,11 @@ const msg = (
   content: "",
   status: "complete",
   event: null,
+  mode: null,
   helpLevel: null,
   clientMessageId: null,
   citations: [],
+  feedback: null,
   createdAt: "2026-10-15T10:00:00Z",
   ...over,
 });
@@ -56,6 +58,7 @@ describe("FR-3.4 / NFR-14 resume transcript", () => {
       clientMessageId: "k1",
       text: "My answer",
       event: null,
+      switchTo: null,
     });
   });
 
@@ -68,5 +71,58 @@ describe("FR-3.4 / NFR-14 resume transcript", () => {
       true,
     );
     expect(t).toMatchObject({ pending: true, lastReplyFailed: false });
+  });
+});
+
+describe("PRD §11 request routing per student turn", () => {
+  const turn = (over: Partial<NonNullable<ReturnType<typeof lastStudentTurn>>> = {}) => ({
+    clientMessageId: "k1",
+    text: "Hi",
+    event: null,
+    switchTo: null,
+    ...over,
+  });
+
+  it("FR-3.2 the first action creates the conversation, with the chosen mode", () => {
+    expect(requestFor(turn(), null, "visible-cues")).toEqual({
+      api: "/api/conversations",
+      body: { paperSlug: "visible-cues", clientMessageId: "k1", text: "Hi" },
+    });
+    expect(requestFor(turn({ event: "start", switchTo: "apply" }), null, "visible-cues")).toEqual({
+      api: "/api/conversations",
+      body: { paperSlug: "visible-cues", clientMessageId: "k1", mode: "apply" },
+    });
+  });
+
+  it("FR-3.5 Explain it to me → stuck event; mode switch → /mode; text → /messages", () => {
+    expect(requestFor(turn({ event: "stuck" }), "c1", "p")).toEqual({
+      api: "/api/conversations/c1/messages",
+      body: { clientMessageId: "k1", event: "stuck" },
+    });
+    expect(requestFor(turn({ event: "mode_switch", switchTo: "apply" }), "c1", "p")).toEqual({
+      api: "/api/conversations/c1/mode",
+      body: { clientMessageId: "k1", mode: "apply" },
+    });
+    expect(requestFor(turn(), "c1", "p")).toEqual({
+      api: "/api/conversations/c1/messages",
+      body: { clientMessageId: "k1", text: "Hi" },
+    });
+  });
+
+  it("a resumed mode-switch event keeps its target mode for Retry", () => {
+    const t = toTranscript(
+      [
+        msg({
+          id: "e1",
+          role: "event",
+          event: "mode_switch",
+          mode: "apply",
+          clientMessageId: "k9",
+        }),
+        msg({ id: "t1", role: "tutor", status: "failed" }),
+      ],
+      false,
+    );
+    expect(lastStudentTurn(t.messages)).toMatchObject({ event: "mode_switch", switchTo: "apply" });
   });
 });

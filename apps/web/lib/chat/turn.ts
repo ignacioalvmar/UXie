@@ -3,7 +3,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessageStreamWriter,
 } from "ai";
-import type { LearnerState, TurnEvent } from "@uxie/core";
+import type { LearnerState, Mode, TurnEvent } from "@uxie/core";
 import type { GuideSummary } from "@uxie/db";
 import { TutorError, type TurnResult, type TurnStream } from "@uxie/tutor";
 import { checkLimits, MINUTE_MS, monthStart, utcDay } from "../limits";
@@ -19,11 +19,20 @@ export interface ChatConversation {
   id: string;
   paperId: string;
   paperVersionId: string;
+  mode: Mode;
   status: "active" | "reset" | "closed";
 }
 
+export type OpenResult =
+  | { ok: true; conversationId: string; created: boolean }
+  | { ok: false; status: number; code: string; message: string };
+
 export interface ChatStore {
   ownConversation(studentId: string, conversationId: string): Promise<ChatConversation | null>;
+  /** FR-3.2: the student's active conversation on the paper's current version, or a new one. */
+  openConversationForPaper(studentId: string, paperId: string, mode: Mode): Promise<OpenResult>;
+  /** FR-3.5: the old conversation stays readable with status `reset`. */
+  closeConversation(conversationId: string, status: "reset"): Promise<void>;
   /** Paper published, in a published module: new turns allowed (retired → false, FR-2.3). */
   paperOpenForChat(paperId: string): Promise<boolean>;
   hasClientMessage(conversationId: string, clientMessageId: string): Promise<boolean>;
@@ -51,6 +60,8 @@ export interface ChatDeps {
   store: ChatStore;
   engine: () => Promise<TurnEngine>;
   limits: { dailyLimit: number; perMinuteLimit: number; ceilingEur: number };
+  /** Focus modes offered (TUTOR_MODES); Critique and Build are P1 (D11). */
+  modes: readonly Mode[];
   /** Next.js `after()`: keeps the function alive until the reply is saved (client may leave). */
   after: (task: Promise<unknown>) => void;
   now?: () => Date;
@@ -124,6 +135,13 @@ export async function handleTurn(deps: ChatDeps, input: TurnInput): Promise<Resp
     return jsonError(410, "paper_unavailable", "This paper is no longer available for chat.");
 
   const isRetry = await store.hasClientMessage(conv.id, input.clientMessageId);
+  if (input.event.type === "mode_switch") {
+    if (!deps.modes.includes(input.event.mode))
+      return jsonError(400, "invalid_input", "This focus mode is not available.");
+    // A retried switch finds the mode already changed: let it replay instead of refusing it.
+    if (!isRetry && input.event.mode === conv.mode)
+      return jsonError(409, "same_mode", "The conversation is already in this mode.");
+  }
   const [spendEur, turnsToday, window] = await Promise.all([
     store.spendSince(monthStart(now)),
     store.turnsToday(input.studentId, utcDay(now)),
@@ -246,6 +264,7 @@ async function pumpTurn(
       type: "finish",
       messageMetadata: {
         status: "complete",
+        mode: result.state.mode,
         text: result.text,
         citations: result.citations,
         progress: progressDto(result.state, guide),
@@ -275,4 +294,39 @@ async function pumpTurn(
     })
     .catch(() => {});
   if (result) await ctx.engine.maybeSummarizeHistory(conv.id).catch(() => {});
+}
+
+/**
+ * Start over (FR-3.5; PRD §8.8: an adapter concern). Marks the conversation `reset` (it stays
+ * readable) and opens a fresh one on the paper's current version in the same mode
+ * (`resetState`). The browser then sends the `start` event to the new conversation.
+ */
+export async function handleReset(
+  deps: Pick<ChatDeps, "store" | "onError">,
+  input: { studentId: string; conversationId: string },
+): Promise<Response> {
+  const { store } = deps;
+  const conv = await store.ownConversation(input.studentId, input.conversationId);
+  if (!conv) return jsonError(404, "not_found", "Conversation not found.");
+  if (conv.status !== "active")
+    return jsonError(409, "conversation_closed", "This conversation is already closed.");
+  if (!(await store.paperOpenForChat(conv.paperId)))
+    return jsonError(410, "paper_unavailable", "This paper is no longer available for chat.");
+  // Holding the lock means no reply is being written into the conversation we close.
+  if (!(await store.acquireLock(conv.id)))
+    return jsonError(409, "busy", "UXie is still answering. Start over when the reply is done.");
+  try {
+    await store.closeConversation(conv.id, "reset");
+  } finally {
+    await store.releaseLock(conv.id).catch((e) => deps.onError?.(e, { phase: "unlock" }));
+  }
+  const opened = await store.openConversationForPaper(input.studentId, conv.paperId, conv.mode);
+  if (!opened.ok) return jsonError(opened.status, opened.code, opened.message);
+  void store
+    .logEvent("conversation_reset", input.studentId, {
+      conversation_id: conv.id,
+      new_conversation_id: opened.conversationId,
+    })
+    .catch(() => {});
+  return Response.json({ newConversationId: opened.conversationId });
 }

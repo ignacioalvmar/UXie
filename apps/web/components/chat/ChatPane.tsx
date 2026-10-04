@@ -18,7 +18,9 @@ import {
   UxieCharacter,
   type CharacterId,
 } from "@uxie/character";
-import { lastStudentTurn, messageText, toTranscript } from "../../lib/chat/transcript";
+import { useRouter } from "next/navigation";
+import type { Mode } from "@uxie/core";
+import { lastStudentTurn, messageText, requestFor, toTranscript } from "../../lib/chat/transcript";
 import type {
   ApiErrorBody,
   ChatUIMessage,
@@ -27,7 +29,27 @@ import type {
 } from "../../lib/chat/types";
 import { parseApiError } from "../../lib/chat/types";
 import { resetTime } from "../../lib/format";
-import { ArrowDownIcon, ArrowRightIcon, BookIcon, CheckIcon, SendIcon, StopIcon } from "../icons";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  BookIcon,
+  CheckIcon,
+  LifebuoyIcon,
+  RetryIcon,
+  SendIcon,
+  StopIcon,
+} from "../icons";
+import {
+  FeedbackBar,
+  MODE_LABEL,
+  ModeSelector,
+  ProgressButton,
+  ProgressDrawer,
+  ProjectCard,
+  ProjectNote,
+  StartOverDialog,
+  SupersededBanner,
+} from "./TutorControls";
 import { TutorMarkdown } from "./TutorMarkdown";
 
 /**
@@ -53,6 +75,7 @@ const NOT_SAVED = new Set([
   "invalid_input",
   "conversation_closed",
   "already_started",
+  "same_mode",
 ]);
 
 const HELP_SUFFIX: Record<string, string> = {
@@ -68,6 +91,12 @@ export interface ChatPaneProps {
   starterQuestions: string[];
   objectives: ProgressDto[];
   chatOpen: boolean;
+  /** Focus modes offered (TUTOR_MODES). */
+  modes: Mode[];
+  /** The student's saved project, used by Apply mode (FR-1.5). */
+  projectDescription: string | null;
+  /** The conversation is on a superseded version of a still-published paper (FR-3.8). */
+  superseded: boolean;
   /** Open page N in the reader (and switch to Read on mobile). */
   onCite: (page: number) => void;
   onKeepReading: () => void;
@@ -106,30 +135,22 @@ export function ChatPane(props: ChatPaneProps) {
   const [announcement, setAnnouncement] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const closed = initialConversation ? initialConversation.status !== "active" : false;
+  const router = useRouter();
+  // The mode shown: the server's after each turn; set ahead while a switch is on its way.
+  const [mode, setMode] = useState<Mode>(initialConversation?.mode ?? "understand");
+  const modeBefore = useRef<Mode>(mode);
+  const [project, setProject] = useState(props.projectDescription);
+  const [projectDismissed, setProjectDismissed] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const progressButton = useRef<HTMLButtonElement>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport<ChatUIMessage>({
-        prepareSendMessagesRequest: ({ messages }) => {
-          const turn = lastStudentTurn(messages)!;
-          const id = conversationId.current;
-          if (!id || turn.event === "start")
-            return {
-              api: "/api/conversations",
-              body: {
-                paperSlug,
-                clientMessageId: turn.clientMessageId,
-                ...(turn.event === "start" ? {} : { text: turn.text }),
-              },
-            };
-          return {
-            api: `/api/conversations/${id}/messages`,
-            body:
-              turn.event === "stuck"
-                ? { clientMessageId: turn.clientMessageId, event: "stuck" }
-                : { clientMessageId: turn.clientMessageId, text: turn.text },
-          };
-        },
+        prepareSendMessagesRequest: ({ messages }) =>
+          requestFor(lastStudentTurn(messages)!, conversationId.current, paperSlug),
       }),
     [paperSlug],
   );
@@ -159,19 +180,26 @@ export function ChatPane(props: ChatPaneProps) {
           if (last?.role === "assistant" && last.metadata?.status !== "complete")
             list = list.slice(0, -1);
           if (!NOT_SAVED.has(err.code)) return list;
-          // The server refused before saving: take the message back into the composer.
+          // The server refused before saving: take the message back into the composer, or
+          // drop the button event (and undo a mode switch that did not happen).
           const user = list.at(-1);
-          if (user?.role === "user" && !user.metadata?.event) {
-            setDraft(user.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
+          if (user?.role !== "user") return list;
+          if (user.metadata?.event) {
+            if (user.metadata.switchTo) setMode(modeBefore.current);
             return list.slice(0, -1);
           }
-          return list;
+          setDraft(user.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
+          return list.slice(0, -1);
         });
       },
       onFinish: ({ message }) => {
         const meta = message.metadata;
         if (meta?.conversationId) adoptConversation(meta.conversationId);
         if (meta?.progress) setProgress(meta.progress);
+        if (meta?.mode) {
+          setMode(meta.mode);
+          modeBefore.current = meta.mode;
+        }
         if (meta?.demonstrated?.length) {
           flash("celebrate");
           setAnnouncement(meta.demonstrated.map((s) => `Idea demonstrated: ${s}`).join(" "));
@@ -266,6 +294,78 @@ export function ChatPane(props: ChatPaneProps) {
     void regenerate();
   };
 
+  const canAct = !busy && !blocking && !pending && chatOpen && !closed;
+  const sendEvent = (text: string, metadata: ChatUIMessage["metadata"]) => {
+    setApiError(null);
+    setStopped(false);
+    setAnnouncement("");
+    clearError();
+    void sendMessage({ text, metadata });
+  };
+
+  /** "Explain it to me" (PRD §3.3): a `stuck` event moves the help ladder up one step. */
+  const explain = () => {
+    if (canAct) sendEvent("Explain it to me", { event: "stuck" });
+  };
+
+  /** Mode selector (FR-3.5, FR-4.7). Without a conversation, choosing a mode creates it (FR-3.2). */
+  const chooseMode = (m: Mode) => {
+    if (m === mode || !canAct) return;
+    modeBefore.current = mode;
+    setMode(m);
+    if (!conversationId.current)
+      sendEvent("Started the conversation", { event: "start", switchTo: m });
+    else sendEvent(`Switched to ${MODE_LABEL[m]} mode`, { event: "mode_switch", switchTo: m });
+  };
+
+  /** Start over (FR-3.5): close this conversation, open a fresh one and let UXie greet. */
+  const startOver = async () => {
+    const id = conversationId.current;
+    if (!id) return;
+    setResetting(true);
+    const res = await fetch(`/api/conversations/${id}/reset`, { method: "POST" }).catch(() => null);
+    if (res?.ok) {
+      const { newConversationId } = (await res.json()) as { newConversationId: string };
+      router.replace(`/papers/${paperSlug}?c=${newConversationId}`);
+      return; // The workspace remounts on the new conversation (keyed by id).
+    }
+    setResetting(false);
+    setConfirmReset(false);
+    setApiError(res ? parseApiError(await res.text()) : { code: "network_error", message: "" });
+  };
+
+  /** Apply-mode project card: optionally save to the profile, then send it as the reply. */
+  const sendProject = async (text: string, save: boolean) => {
+    if (save) {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projectDescription: text }),
+      }).catch(() => null);
+      if (!res?.ok) return false;
+      setProject(text);
+    }
+    setProjectDismissed(true);
+    send(`My project: ${text}`);
+    return true;
+  };
+
+  // A new, empty conversation (after Start over): UXie opens it (FR-4.1).
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!initialConversation || !chatOpen) return;
+    const empty = initialConversation.messages.length === 0 && !initialConversation.generating;
+    if (!empty || initialConversation.status !== "active") return;
+    // Deferred and cancellable: under StrictMode's mount → unmount → mount only the surviving
+    // mount sends (a send from the discarded mount is lost with its chat instance).
+    const t = setTimeout(() => {
+      if (autoStarted.current) return;
+      autoStarted.current = true;
+      sendEvent("Started the conversation", { event: "start" });
+    }, 0);
+    return () => clearTimeout(t);
+  }, []); // Once on mount, by design.
+
   // Scrolling: follow new content unless the student scrolled up.
   const log = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -296,8 +396,6 @@ export function ChatPane(props: ChatPaneProps) {
     if (bottom) setUnseen(false);
   };
 
-  const demonstrated = progress.filter((p) => p.status === "demonstrated").length;
-  const inProgress = progress.filter((p) => p.status === "in_progress").length;
   const hasConversation = messages.length > 0 || conversationId.current !== null;
   const visible = messages.filter((m) => m.metadata?.event !== "start");
   const settled = streamingMessage ? visible.filter((m) => m.id !== streamingMessage.id) : visible;
@@ -313,27 +411,48 @@ export function ChatPane(props: ChatPaneProps) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-[1.5px] border-line-soft px-5 py-3">
-        <h2 className="font-display text-lg font-bold">Conversation with {name}</h2>
-        <p className="flex flex-col items-end gap-1 text-sm text-ink-muted">
-          <span aria-hidden="true" className="flex gap-[3px]">
-            {progress.map((p) => (
-              <span
-                key={p.id}
-                className={`h-1.5 w-[22px] rounded-[3px] ${
-                  p.status === "demonstrated"
-                    ? "bg-success-mark"
-                    : p.status === "in_progress"
-                      ? "bg-primary"
-                      : "bg-progress-track"
-                }`}
-              />
-            ))}
-          </span>
-          {hasConversation
-            ? `Progress: ${demonstrated} of ${progress.length} ideas, ${inProgress} in progress`
-            : `Progress: ${progress.length} ideas to explore`}
-        </p>
+        <h2 className="sr-only">Conversation with {name}</h2>
+        <ModeSelector
+          modes={props.modes}
+          mode={mode}
+          disabled={!canAct}
+          compact={compact}
+          onChoose={chooseMode}
+        />
+        <ProgressButton
+          progress={progress}
+          hasConversation={hasConversation}
+          compact={compact}
+          onOpen={() => setProgressOpen(true)}
+          buttonRef={progressButton}
+        />
       </div>
+      {props.superseded && !closed && <SupersededBanner paperSlug={paperSlug} />}
+      {mode === "apply" && project && (
+        <ProjectNote>
+          {name} applies the paper to your project from your profile.{" "}
+          <a href="/account" className="font-bold text-primary underline">
+            Edit it on your Account page
+          </a>
+        </ProjectNote>
+      )}
+      <ProgressDrawer
+        open={progressOpen}
+        onClose={() => setProgressOpen(false)}
+        progress={progress}
+        mode={mode}
+        modes={props.modes}
+        canSwitch={canAct}
+        onCite={onCite}
+        onWorkOn={chooseMode}
+      />
+      <StartOverDialog
+        open={confirmReset}
+        mode={mode}
+        working={resetting}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => void startOver()}
+      />
 
       <div
         ref={log}
@@ -408,6 +527,14 @@ export function ChatPane(props: ChatPaneProps) {
                 in a moment.
               </p>
             )}
+            {mode === "apply" && !project && !projectDismissed && !busy && !closed && chatOpen && (
+              <ProjectCard
+                name={name}
+                disabled={!canAct}
+                onSend={sendProject}
+                onDismiss={() => setProjectDismissed(true)}
+              />
+            )}
             {apiError && (
               <ErrorPanel
                 error={apiError}
@@ -467,6 +594,15 @@ export function ChatPane(props: ChatPaneProps) {
           showKeepReading={!!blocking || apiError?.code === "reply_failed"}
           onKeepReading={onKeepReading}
           compact={compact}
+          actions={
+            hasConversation && conversationId.current
+              ? {
+                  onExplain: explain,
+                  explainDisabled: !canAct,
+                  onStartOver: () => setConfirmReset(true),
+                }
+              : null
+          }
         />
       )}
     </div>
@@ -589,6 +725,12 @@ function TutorMessage({
           <TutorMarkdown text={messageText(m)} onCite={onCite} final={!streaming} />
           {streaming && <Dots />}
         </div>
+        {!streaming && m.metadata?.status === "complete" && m.metadata.tutorMessageId && (
+          <FeedbackBar
+            messageId={m.metadata.tutorMessageId}
+            initial={m.metadata.feedback ?? null}
+          />
+        )}
       </div>
     </div>
   );
@@ -751,7 +893,10 @@ function Composer({
   showKeepReading,
   onKeepReading,
   compact,
+  actions,
 }: {
+  /** "Explain it to me" and "Start over"; absent before the conversation exists. */
+  actions: { onExplain: () => void; explainDisabled: boolean; onStartOver: () => void } | null;
   name: string;
   empty: boolean;
   value: string;
@@ -767,13 +912,24 @@ function Composer({
   compact: boolean;
 }) {
   const area = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
+  const fit = useCallback(() => {
     const el = area.current;
     if (!el) return;
     el.style.height = "auto";
     const line = 17 * 1.5;
     el.style.height = `${Math.min(el.scrollHeight, line * 6 + 26)}px`;
-  }, [value]);
+  }, []);
+  // The placeholder changes while a reply is written; it can wrap differently.
+  useLayoutEffect(fit, [fit, value, disabled, disabledPlaceholder]);
+  // The first measurement can run before the web fonts and pane width settle.
+  useEffect(() => {
+    void document.fonts?.ready.then(fit);
+    const el = area.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(el.parentElement ?? el);
+    return () => ro.disconnect();
+  }, [fit]);
   return (
     <form
       onSubmit={(e) => {
@@ -839,19 +995,43 @@ function Composer({
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {showKeepReading ? (
-          <button
-            type="button"
-            onClick={onKeepReading}
-            className="inline-flex min-h-11 items-center gap-2 rounded-field border-[1.5px] border-line px-3 font-bold text-ink"
-          >
-            <BookIcon size={18} />
-            Keep reading the paper
-          </button>
-        ) : (
-          <span />
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          {actions && (
+            <>
+              <button
+                type="button"
+                onClick={actions.onExplain}
+                disabled={actions.explainDisabled}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-field border-[1.5px] border-primary px-3 font-bold text-primary hover:bg-ground disabled:border-line-soft disabled:text-ink-muted ${compact ? "flex-1" : ""}`}
+              >
+                <LifebuoyIcon size={18} />
+                Explain it to me
+              </button>
+              <button
+                type="button"
+                onClick={actions.onStartOver}
+                disabled={busy}
+                className="inline-flex min-h-11 items-center gap-2 rounded-field px-3 font-bold text-ink-muted hover:bg-ground disabled:opacity-60"
+              >
+                <RetryIcon size={18} />
+                Start over
+              </button>
+            </>
+          )}
+          {showKeepReading && (
+            <button
+              type="button"
+              onClick={onKeepReading}
+              className="inline-flex min-h-11 items-center gap-2 rounded-field border-[1.5px] border-line px-3 font-bold text-ink"
+            >
+              <BookIcon size={18} />
+              Keep reading the paper
+            </button>
+          )}
+        </div>
+        {!compact && (
+          <span className="text-sm text-ink-subtle">Enter sends · Shift+Enter adds a line</span>
         )}
-        <span className="text-sm text-ink-subtle">Enter sends · Shift+Enter adds a line</span>
       </div>
     </form>
   );

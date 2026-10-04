@@ -18,6 +18,7 @@ const config: NextConfig = {
     "/onboarding": ["./content/**"],
     "/api/conversations": ["../../prompts/**"],
     "/api/conversations/[id]/messages": ["../../prompts/**"],
+    "/api/conversations/[id]/mode": ["../../prompts/**"],
   },
 };
 

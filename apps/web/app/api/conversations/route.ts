@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Mode } from "@uxie/core";
-import { chatDeps, chatStore } from "../../../lib/chat/store";
+import { chatDeps, chatStore, enabledModes } from "../../../lib/chat/store";
 import { handleTurn, jsonError } from "../../../lib/chat/turn";
 import { apiUser, crossOrigin, readJson } from "../../../lib/http";
 import { loadConversationList } from "../../../lib/views";
@@ -35,6 +35,8 @@ export async function POST(request: Request) {
   if (auth instanceof Response) return auth;
   const body = CreateBody.safeParse(await readJson(request));
   if (!body.success) return jsonError(400, "invalid_input", "Invalid request.");
+  if (body.data.mode && !enabledModes().includes(body.data.mode))
+    return jsonError(400, "invalid_input", "This focus mode is not available.");
 
   const store = chatStore();
   const opened = await store.openConversation(auth.user.id, body.data.paperSlug, body.data.mode);

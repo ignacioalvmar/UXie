@@ -22,6 +22,18 @@ describe("parseEnv (PRD §7)", () => {
     expect(env.LLM_PRICES_JSON.m?.out).toBe(10);
   });
 
+  it("D11 TUTOR_MODES: Understand and Apply by default; P1 modes opt-in; understand required", () => {
+    expect(parseEnv(BaseEnvSchema, dev).TUTOR_MODES).toEqual(["understand", "apply"]);
+    expect(
+      parseEnv(BaseEnvSchema, { ...dev, TUTOR_MODES: "understand, apply, Critique, build" })
+        .TUTOR_MODES,
+    ).toEqual(["understand", "apply", "critique", "build"]);
+    expect(() => parseEnv(BaseEnvSchema, { ...dev, TUTOR_MODES: "apply" })).toThrow(EnvError);
+    expect(() => parseEnv(BaseEnvSchema, { ...dev, TUTOR_MODES: "understand,teach" })).toThrow(
+      EnvError,
+    );
+  });
+
   it("FR-9.1 requires an API key for anthropic", () => {
     expect(() => parseEnv(BaseEnvSchema, { LLM_PROVIDER: "anthropic" })).toThrow(/LLM_API_KEY/);
   });

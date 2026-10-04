@@ -34,6 +34,8 @@ export interface TutorMeta {
   flags?: TurnFlagsDto;
   replayed?: boolean;
   status?: "complete";
+  /** The conversation's mode after the turn (changes on a mode switch, FR-4.7). */
+  mode?: Mode;
   text?: string;
   citations?: Citation[];
   progress?: ProgressDto[];
@@ -41,11 +43,20 @@ export interface TutorMeta {
   demonstrated?: string[];
   /** Client only: a button event shown in the transcript ("Explain it to me"). */
   event?: string;
+  /** Client only: the mode a `mode_switch` event asks for. */
+  switchTo?: Mode;
+  /** The student's rating of this tutor message (FR-3.6). */
+  feedback?: FeedbackDto;
   /** Client only: a reply that failed or was interrupted and is not saved. */
   failed?: boolean;
 }
 
 export type ChatUIMessage = UIMessage<TutorMeta>;
+
+export interface FeedbackDto {
+  rating: 1 | -1;
+  comment: string | null;
+}
 
 export interface ChatMessageDto {
   id: string;
@@ -53,9 +64,11 @@ export interface ChatMessageDto {
   content: string;
   status: "complete" | "streaming" | "failed";
   event: string | null;
+  mode: Mode | null;
   helpLevel: string | null;
   clientMessageId: string | null;
   citations: Citation[];
+  feedback: FeedbackDto | null;
   createdAt: string;
 }
 

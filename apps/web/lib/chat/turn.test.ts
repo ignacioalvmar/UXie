@@ -12,7 +12,7 @@ import {
   InMemoryUsageRepo,
   loadFixturePaper,
 } from "@uxie/tutor/testing";
-import { handleTurn, type ChatDeps, type ChatStore, type TurnInput } from "./turn";
+import { handleReset, handleTurn, type ChatDeps, type ChatStore, type TurnInput } from "./turn";
 import type { TutorMeta } from "./types";
 
 /**
@@ -51,6 +51,7 @@ interface World {
   pending: Promise<unknown>[];
   counts: { spendEur: number; turnsToday: number; lastMinute: number };
   paperOpen: { value: boolean };
+  profiles: InMemoryProfileRepo;
   respond: (r: MockResponder) => void;
 }
 
@@ -67,6 +68,7 @@ function world(): World {
   });
   const conversations = new InMemoryConversationRepo(newId);
   const usage = new InMemoryUsageRepo();
+  const profiles = new InMemoryProfileRepo();
   const conv = conversations.create({
     studentId: STUDENT,
     paperVersionId: VERSION,
@@ -76,7 +78,7 @@ function world(): World {
     llm,
     papers,
     conversations,
-    profiles: new InMemoryProfileRepo(),
+    profiles,
     usage,
     prompts,
     newId,
@@ -100,7 +102,13 @@ function world(): World {
     async ownConversation(studentId, id) {
       const c = conversations.conversations.get(id);
       return c && c.studentId === studentId
-        ? { id: c.id, paperId: "paper-1", paperVersionId: c.paperVersionId, status: c.status }
+        ? {
+            id: c.id,
+            paperId: "paper-1",
+            paperVersionId: c.paperVersionId,
+            mode: c.mode,
+            status: c.status,
+          }
         : null;
     },
     paperOpenForChat: async () => paperOpen.value,
@@ -116,6 +124,20 @@ function world(): World {
     releaseLock: async (id) => void locks.delete(id),
     guide: async () => guideSummary,
     logEvent: async () => {},
+    closeConversation: async (id, status) => conversations.close(id, status),
+    async openConversationForPaper(studentId, _paperId, mode) {
+      const active = [...conversations.conversations.values()].find(
+        (c) => c.studentId === studentId && c.status === "active",
+      );
+      if (active) return { ok: true, conversationId: active.id, created: false };
+      const created = conversations.create({
+        studentId,
+        paperVersionId: VERSION,
+        guide: fixture.guide,
+        mode,
+      });
+      return { ok: true, conversationId: created.id, created: true };
+    },
   };
   const pending: Promise<unknown>[] = [];
   return {
@@ -123,6 +145,7 @@ function world(): World {
       store,
       engine: async () => engine,
       limits: { dailyLimit: 120, perMinuteLimit: 8, ceilingEur: 100 },
+      modes: ["understand", "apply"],
       after: (p) => void pending.push(p),
       now: () => NOW,
     },
@@ -133,6 +156,7 @@ function world(): World {
     pending,
     counts,
     paperOpen,
+    profiles,
     respond: (r) => {
       responder = r;
     },
@@ -311,5 +335,192 @@ describe("FR-3.4 / PRD §4.4 chat turn route", () => {
     expect(again.status).toBe(409);
     expect(await again.json()).toMatchObject({ code: "already_started" });
     expect(w.locks.size).toBe(0);
+  });
+});
+
+const stuck = (w: World, clientMessageId = newId()): TurnInput => ({
+  studentId: STUDENT,
+  conversationId: w.conversationId,
+  clientMessageId,
+  event: { type: "stuck" },
+});
+
+const switchTo = (w: World, mode: "understand" | "apply" | "critique", clientMessageId = newId()) =>
+  ({
+    studentId: STUDENT,
+    conversationId: w.conversationId,
+    clientMessageId,
+    event: { type: "mode_switch", mode },
+  }) satisfies TurnInput;
+
+/** Runs one turn to completion (including the after-work) and returns its stream parts. */
+async function turn(w: World, input: TurnInput) {
+  const parts = await chunks(await handleTurn(w.deps, input));
+  await Promise.all(w.pending);
+  return parts;
+}
+
+const finishMeta = (parts: Chunk[]) => parts.find((p) => p.type === "finish")?.messageMetadata;
+
+/** Records the system prompt of every tutor reply (the dynamic part carries mode and project). */
+function recordTutorPrompts(w: World, assessment?: (studentText: string) => object | null) {
+  const systems: string[] = [];
+  w.respond((call) => {
+    if (call.purpose === "tutor") systems.push(call.system);
+    if (call.purpose === "assessment" && assessment) {
+      const value = assessment(call.messages.at(-1)?.content ?? "");
+      if (value) return JSON.stringify(value);
+    }
+    return defaultMockResponder(call);
+  });
+  return systems;
+}
+
+describe("M7 tutor features (mock LLM, real engine)", () => {
+  it("PRD §3.3 FR-3.5 Explain it to me ×3 → hint, hint, explain; the next turn is check (help levels on messages)", async () => {
+    for (let i = 0; i < 3; i++) await turn(w, stuck(w));
+    const after = await turn(w, say(w, "So a signifier is the visible cue."));
+    expect(finishMeta(after)?.status).toBe("complete");
+
+    const mine = w.conversations.messages.filter((m) => m.conversationId === w.conversationId);
+    expect(mine.filter((m) => m.role === "event").map((m) => m.event)).toEqual([
+      "stuck",
+      "stuck",
+      "stuck",
+    ]);
+    expect(mine.filter((m) => m.role === "tutor").map((m) => m.helpLevel)).toEqual([
+      "hint:0",
+      "hint:1",
+      "explain",
+      "check",
+    ]);
+    // `check` resets the counters (PRD §8.2).
+    const state = w.conversations.conversations.get(w.conversationId)!.state;
+    expect(state).toMatchObject({ attempts: 0, stuck_requests: 0 });
+  });
+
+  it("J3 FR-1.5 Apply mode without a project asks for one; a saved project is in later prompts", async () => {
+    const systems = recordTutorPrompts(w);
+    const switched = await turn(w, switchTo(w, "apply"));
+    expect(finishMeta(switched)?.mode).toBe("apply");
+    expect(systems[0]).toContain("Student project: UNKNOWN");
+    expect(w.conversations.conversations.get(w.conversationId)!.mode).toBe("apply");
+
+    // "Save to my profile" (PATCH /api/me) stores it; the engine reads it on every Apply turn.
+    w.profiles.projects.set(STUDENT, "A plant-watering app for students in shared flats.");
+    await turn(w, say(w, "My project: A plant-watering app for students in shared flats."));
+    await turn(w, say(w, "I would add a watering-can icon to the plant card."));
+    expect(systems[1]).toContain(
+      "Student project: A plant-watering app for students in shared flats.",
+    );
+    expect(systems[2]).toContain("Student project: A plant-watering app");
+    expect(systems[2]).not.toContain("UNKNOWN");
+  });
+
+  it("M7 mastery check met → Progress shows U1 Demonstrated with evidence; the tutor moves on to U2", async () => {
+    const evidence = "Said the door handle affords pulling while the PULL sign signifies it.";
+    const systems = recordTutorPrompts(w, (text) =>
+      text.includes("handle")
+        ? {
+            intent: "answer",
+            answer_quality: "correct",
+            objective_updates: [{ objective_id: "U1", status: "demonstrated", evidence }],
+            misconception: null,
+            misconception_resolved: null,
+            language: "en",
+          }
+        : null,
+    );
+    await turn(w, say(w, "An affordance is what you can do?"));
+    const met = await turn(
+      w,
+      say(w, "The handle affords pulling; the PULL sign is the signifier that tells you."),
+    );
+    const meta = finishMeta(met)!;
+    const u1 = meta.progress!.find((p) => p.id === "U1")!;
+    expect(u1).toMatchObject({ status: "demonstrated", evidence, active: false });
+    expect(meta.progress!.find((p) => p.active)?.id).toBe("U2");
+    expect(meta.demonstrated).toEqual([u1.statement]);
+
+    // The reply to this turn and the next both work on U2.
+    expect(systems[1]).toContain("Current objective: U2");
+    await turn(w, say(w, "Feedback shows what happened?"));
+    expect(systems[2]).toContain("Current objective: U2");
+    expect(systems[2]).toMatch(/U1 \(understanding\): .*\[demonstrated\]/);
+  });
+
+  it("FR-4.7 mode switch: unavailable mode → 400, same mode → 409, a retried switch replays", async () => {
+    const p1 = await handleTurn(w.deps, switchTo(w, "critique"));
+    expect(p1.status).toBe(400);
+    const same = await handleTurn(w.deps, switchTo(w, "understand"));
+    expect(same.status).toBe(409);
+    expect(await same.json()).toMatchObject({ code: "same_mode" });
+
+    const input = switchTo(w, "apply");
+    await turn(w, input);
+    const again = await turn(w, input);
+    expect(again.find((p) => p.type === "start")?.messageMetadata?.replayed).toBe(true);
+    expect(w.conversations.messages.filter((m) => m.event === "mode_switch")).toHaveLength(1);
+    expect(w.locks.size).toBe(0);
+  });
+});
+
+describe("FR-3.5 Start over", () => {
+  it("closes the conversation as `reset` and opens a fresh one in the same mode", async () => {
+    await turn(w, switchTo(w, "apply"));
+    await turn(w, say(w, "A first answer."));
+    const res = await handleReset(w.deps, { studentId: STUDENT, conversationId: w.conversationId });
+    expect(res.status).toBe(200);
+    const { newConversationId } = (await res.json()) as { newConversationId: string };
+    expect(newConversationId).not.toBe(w.conversationId);
+
+    const old = w.conversations.conversations.get(w.conversationId)!;
+    expect(old.status).toBe("reset");
+    expect(w.conversations.messages.some((m) => m.conversationId === w.conversationId)).toBe(true);
+    const fresh = w.conversations.conversations.get(newConversationId)!;
+    expect(fresh).toMatchObject({ status: "active", mode: "apply" });
+    expect(Object.values(fresh.state.objectives).every((s) => s === "not_started")).toBe(true);
+    expect(w.locks.size).toBe(0);
+
+    // The old conversation takes no new turns; the new one opens with the start event.
+    expect((await handleTurn(w.deps, say(w, "Hello again"))).status).toBe(409);
+    const opened = await turn(w, {
+      studentId: STUDENT,
+      conversationId: newConversationId,
+      clientMessageId: newId(),
+      event: { type: "start" },
+    });
+    expect(finishMeta(opened)?.status).toBe("complete");
+  });
+
+  it("refuses while a reply is generating (409), for others' conversations (404) and twice (409)", async () => {
+    w.locks.add(w.conversationId);
+    const busy = await handleReset(w.deps, {
+      studentId: STUDENT,
+      conversationId: w.conversationId,
+    });
+    expect(busy.status).toBe(409);
+    expect(await busy.json()).toMatchObject({ code: "busy" });
+    expect(w.conversations.conversations.get(w.conversationId)!.status).toBe("active");
+    w.locks.clear();
+
+    const other = await handleReset(w.deps, { studentId: OTHER, conversationId: w.conversationId });
+    expect(other.status).toBe(404);
+
+    expect(
+      (await handleReset(w.deps, { studentId: STUDENT, conversationId: w.conversationId })).status,
+    ).toBe(200);
+    const twice = await handleReset(w.deps, {
+      studentId: STUDENT,
+      conversationId: w.conversationId,
+    });
+    expect(twice.status).toBe(409);
+  });
+
+  it("a retired paper cannot be started over (410) and the conversation stays active", async () => {
+    w.paperOpen.value = false;
+    const res = await handleReset(w.deps, { studentId: STUDENT, conversationId: w.conversationId });
+    expect(res.status).toBe(410);
+    expect(w.conversations.conversations.get(w.conversationId)!.status).toBe("active");
   });
 });

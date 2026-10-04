@@ -18,6 +18,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     repo.papersById([conv.paperId]),
   ]);
   return Response.json(
-    await conversationDto(conv, guide, papers.get(conv.paperId)?.currentVersionId ?? null),
+    await conversationDto(
+      auth.user.id,
+      conv,
+      guide,
+      papers.get(conv.paperId)?.currentVersionId ?? null,
+    ),
   );
 }
