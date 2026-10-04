@@ -30,7 +30,8 @@ export interface WorkerStore extends IngestStore {
 export interface JobQueue {
   succeed(jobId: string): Promise<void>;
   fail(jobId: string, error: string): Promise<void>;
-  requeue(jobId: string, error: string): Promise<void>;
+  /** `attempts` overrides the counter (a shutdown gives the claimed attempt back). */
+  requeue(jobId: string, error: string, attempts?: number): Promise<void>;
 }
 
 export interface Logger {
@@ -53,6 +54,8 @@ export interface JobDeps {
 }
 
 export type JobOutcome = "succeeded" | "failed" | "requeued";
+
+export const SHUTDOWN_NOTE = "The worker restarted during this job; it was re-queued.";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -84,6 +87,13 @@ export async function processJob(job: ClaimedJob, deps: JobDeps): Promise<JobOut
     );
     return "succeeded";
   } catch (e) {
+    // NFR-17: the worker is shutting down and aborted the job. Not the job's fault: back to the
+    // queue at once, without using up an attempt.
+    if (deps.signal?.aborted) {
+      deps.log.warn({ jobId: job.id, kind: job.kind }, "job_requeued_on_shutdown");
+      await deps.queue.requeue(job.id, SHUTDOWN_NOTE, Math.max(0, job.attempts - 1));
+      return "requeued";
+    }
     // Infrastructure (download, database, network): retry on the next poll, up to maxAttempts.
     const error = message(e);
     deps.log.error({ jobId: job.id, kind: job.kind, attempts: job.attempts, error }, "job_error");
@@ -114,6 +124,7 @@ async function regenerateGuide(versionId: string, store: WorkerStore, deps: JobD
     });
     issues = result.issues;
   } catch (e) {
+    if (deps.signal?.aborted) throw e; // shutdown: re-queue instead of saving a failed draft
     issues = [{ path: "(draft)", message: `Guide drafting failed: ${message(e)}` }];
   }
   await store.saveGuideDraft(versionId, {

@@ -177,6 +177,7 @@ program
 program
   .command("doctor")
   .option("--ping", "send one tiny request to the configured provider")
+  .option("--launch", "launch readiness against the production env (PRD §17.3)")
   .description("Validate env, database, provider, prompts and storage")
   .action(run(doctorCommand));
 

@@ -67,3 +67,14 @@ export function checkLimits(i: LimitInput): LimitBlock | null {
   }
   return null;
 }
+
+/** Share of the monthly ceiling at which the instructor is warned by email (PRD §17.3, P1). */
+export const SPEND_ALERT_SHARE = 0.8;
+
+/** True once this month's spend reaches 80 % of the ceiling (also past 100 %). No ceiling, no alert. */
+export function spendAlertDue(spendEur: number, ceilingEur: number): boolean {
+  return ceilingEur > 0 && spendEur >= ceilingEur * SPEND_ALERT_SHARE;
+}
+
+/** The alert period: one email per calendar month (UTC), e.g. `2026-10`. */
+export const monthKey = (d: Date) => d.toISOString().slice(0, 7);

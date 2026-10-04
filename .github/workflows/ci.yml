@@ -42,10 +42,36 @@ jobs:
       - run: pnpm exec supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime
       - run: pnpm test:db
 
-  audit:
-    # NFR-10. Reported, not blocking, until the first production release (M10).
+  e2e:
+    # PRD §15 / M10: Playwright + axe against the production build, the ingestion worker and the
+    # local Supabase stack (Mailpit catches the verification emails), with the mock model.
     runs-on: ubuntu-latest
-    continue-on-error: true
+    env:
+      LLM_PROVIDER: mock
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @uxie/web exec playwright install --with-deps chromium
+      - run: pnpm exec supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            tmp/e2e-report
+            tmp/e2e-results
+          retention-days: 7
+
+  audit:
+    # NFR-10: blocking from M10 (first production release) on.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

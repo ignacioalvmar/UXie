@@ -19,7 +19,8 @@
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "db:seed-storage": "pnpm --filter @uxie/db seed:storage",
-    "check": "pnpm lint && pnpm typecheck && pnpm depcruise && pnpm test:coverage"
+    "check": "pnpm lint && pnpm typecheck && pnpm depcruise && pnpm test:coverage",
+    "test:e2e": "pnpm --filter @uxie/web build && pnpm --filter @uxie/web test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

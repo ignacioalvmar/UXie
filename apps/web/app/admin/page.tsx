@@ -4,6 +4,7 @@ import { describeLlmSettings, formatEur, monthOf } from "@uxie/core";
 import { DataRightsRepo, isOverdue, ReviewRepo } from "@uxie/db";
 import { Badge } from "../../components/admin/ui";
 import { serverEnv } from "../../lib/env";
+import { spendAlertDue } from "../../lib/limits";
 import { effectiveSettings } from "../../lib/llmSettings";
 import { retentionReminder } from "../../lib/review/text";
 import { serviceDb } from "../../lib/supabase/server";
@@ -26,12 +27,14 @@ export default async function AdminHome() {
   const d = describeLlmSettings(eff.settings);
   const overdue = requests.filter((r) => isOverdue(r, now)).length;
   const retention = retentionReminder(env.RETENTION_REVIEW_DATE, now);
+  const ceiling = env.MONTHLY_SPEND_CEILING_EUR;
+  const spendHigh = spendAlertDue(usage.totalCostEur, ceiling);
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-[32px] font-bold tracking-[-0.02em]">Instructor</h1>
 
-      {(overdue > 0 || retention) && (
+      {(overdue > 0 || retention || spendHigh) && (
         <div
           role="status"
           className="flex flex-col gap-1 rounded-alert border-[1.5px] border-danger-line bg-danger-bg p-4 text-danger-ink"
@@ -45,6 +48,16 @@ export default async function AdminHome() {
             </p>
           )}
           {retention && <p>{retention}</p>}
+          {spendHigh && (
+            <p>
+              {usage.totalCostEur >= ceiling
+                ? "The monthly spend ceiling is reached: tutor replies are paused for everyone."
+                : `${Math.floor((usage.totalCostEur / ceiling) * 100)} % of the monthly spend ceiling is used.`}{" "}
+              <Link href="/admin/usage" className="underline">
+                Usage and cost
+              </Link>
+            </p>
+          )}
         </div>
       )}
 

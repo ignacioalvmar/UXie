@@ -10,19 +10,19 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 
 ## Status
 
-| Milestone | Scope                                                       | State                               |
-| --------- | ----------------------------------------------------------- | ----------------------------------- |
-| M0        | Monorepo, tooling, dependency rules, CI, deploy configs     | done (deploy pending account setup) |
-| M1        | Pure pedagogical core                                       | done                                |
-| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat   | done (verified with Claude)         |
-| M3        | Ingestion (unpdf, docling), analysis, guide drafting        | done (verified with Claude)         |
-| M4        | Eval harness, benchmark, load test (decision gate)          | harness done; provider ADR proposed |
-| M5        | Supabase data layer, RLS, auth, onboarding, AI settings     | done (provider switch check in M6)  |
-| M6        | Library, workspace (PDF + chat), limits, lock, retries      | done (mock LLM; local stack)        |
-| M7        | Modes, Explain-it, progress, Start over, feedback           | done (mock LLM; local stack)        |
-| M8        | Admin content: upload, worker ingest, guides, test, publish | done (mock LLM; local stack)        |
-| M9        | Review, reports, exports, data rights, costs, admin health  | done (mock LLM; local stack)        |
-| M10       | Hardening and launch readiness                              | planned                             |
+| Milestone | Scope                                                        | State                               |
+| --------- | ------------------------------------------------------------ | ----------------------------------- |
+| M0        | Monorepo, tooling, dependency rules, CI, deploy configs      | done (deploy pending account setup) |
+| M1        | Pure pedagogical core                                        | done                                |
+| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat    | done (verified with Claude)         |
+| M3        | Ingestion (unpdf, docling), analysis, guide drafting         | done (verified with Claude)         |
+| M4        | Eval harness, benchmark, load test (decision gate)           | harness done; provider ADR proposed |
+| M5        | Supabase data layer, RLS, auth, onboarding, AI settings      | done (provider switch check in M6)  |
+| M6        | Library, workspace (PDF + chat), limits, lock, retries       | done (mock LLM; local stack)        |
+| M7        | Modes, Explain-it, progress, Start over, feedback            | done (mock LLM; local stack)        |
+| M8        | Admin content: upload, worker ingest, guides, test, publish  | done (mock LLM; local stack)        |
+| M9        | Review, reports, exports, data rights, costs, admin health   | done (mock LLM; local stack)        |
+| M10       | Security headers, e2e + axe, alerts, launch tooling and docs | code done; launch steps with owner  |
 
 ## Layout
 
@@ -46,6 +46,8 @@ Requires Node 22+ and pnpm 11 (`corepack enable`).
 pnpm install
 cp .env.example .env     # LLM_PROVIDER=mock works without any keys
 pnpm check               # lint + typecheck + dependency rules + tests
+pnpm test:db             # RLS + repositories (needs `pnpm exec supabase start`)
+pnpm test:e2e            # Playwright + axe on the production build + worker (local stack, mock model)
 pnpm dev                 # web on http://localhost:3000
 pnpm --filter @uxie/worker dev   # ingestion worker; needs the Supabase vars in .env (or exported)
 pnpm uxie --help
@@ -63,21 +65,27 @@ pnpm uxie export --research --format csv --out x.csv   # research export, logged
 pnpm uxie purge --before 2026-03-31 --dry-run          # retention purge (counts only)
 ```
 
-## Deploy (walking skeleton)
+## Deploy
 
-Both services deploy from `main` (ADR-011).
+Production runs on Vercel (web, `fra1`) + Render (worker, Frankfurt) + Supabase (EU, Frankfurt),
+with the domain on Namecheap (ADR-011). Both services deploy `main`; migrations go first through
+the manual **DB migrate** GitHub Action. The step-by-step setup (Supabase projects, GitHub
+environments, email provider, DNS records, Auth settings, Render Blueprint, Vercel env and domain)
+is in [docs/runbook.md → Production setup](docs/runbook.md#production-setup-m10-prd-171);
+releases, rollback, backup/restore drills and routines follow it there.
 
-**Vercel (apps/web).** Import the GitHub repo → Root Directory `apps/web` → framework Next.js
-(pnpm is detected from the lockfile). `apps/web/vercel.json` pins functions to `fra1`. Add env vars
-per environment once the data layer lands (M5). Attach `uxie.<your-domain>` later (Namecheap
-`CNAME uxie → value shown by Vercel`).
+Before launch, with the production env exported:
 
-**Render (apps/worker).** New → Blueprint → select the repo; `render.yaml` defines the
-`uxie-worker` background worker (Frankfurt) and the `uxie-prod` env group. Enter the secret values
-when prompted (`LLM_API_KEY`, Supabase keys). The worker has no public port.
+```bash
+pnpm uxie doctor --launch   # automated launch checks (exit 1 on blockers) + the manual items
+pnpm uxie doctor --ping     # one tiny request per configured provider/model
+```
 
-**Supabase.** EU/Frankfurt, separate dev and prod projects; setup steps (Auth hook, SMTP,
-password rules, redirect URLs) are in [docs/runbook.md](docs/runbook.md). Locally:
-`pnpm exec supabase start` (Docker), then `pnpm test:db`. `pnpm db:seed-storage` uploads the
-seeded paper's PDF so the workspace can show it (sign in as `student.a@thi.de`,
-password `uxie-dev-password`, local stack only).
+then work through [docs/launch-checklist.md](docs/launch-checklist.md) (PRD §17.3 and the M10
+acceptance criteria).
+
+**Local stack.** `pnpm exec supabase start` (Docker), then `pnpm test:db`. `pnpm db:seed-storage`
+uploads the seeded paper's PDF so the workspace can show it (sign in as `student.a@thi.de`,
+password `uxie-dev-password`, local stack only). `pnpm test:e2e` builds the web app and runs the
+Playwright suite on port 3100 with its own worker; it creates and removes synthetic `e2e-…`
+accounts and papers and refuses to run against a hosted project.

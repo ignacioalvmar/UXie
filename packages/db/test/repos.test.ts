@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BaseEnvSchema, llmSettingsFromEnv, parseEnv } from "@uxie/core";
 import {
   AccountsRepo,
+  AlertRepo,
   createServiceClient,
   loadEffectiveSettings,
   saveSettings,
@@ -138,6 +139,16 @@ describe("usage, llm calls, accounts", () => {
       meta: {},
     });
     expect(await calls.spendSince(since)).toBeCloseTo(0.0123, 4);
+  });
+
+  it("PRD §17.3 alerts are claimed once per kind and period; release allows a retry", async () => {
+    const alerts = new AlertRepo(db);
+    await alerts.release("test_alert", "2026-10");
+    const claims = await Promise.all([1, 2, 3].map(() => alerts.claim("test_alert", "2026-10")));
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    await alerts.release("test_alert", "2026-10");
+    expect(await alerts.claim("test_alert", "2026-10")).toBe(true);
+    await alerts.release("test_alert", "2026-10");
   });
 
   it("FR-1.6 sets a role by email", async () => {

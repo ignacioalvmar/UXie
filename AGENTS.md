@@ -8,7 +8,8 @@ Read docs/PRD.md (§0, §4, §8) before changing code. Work milestone by milesto
 - Deploys: Vercel (apps/web) and Render (apps/worker, render.yaml) both auto-deploy from main. Never hard-code URLs; read APP_URL.
 - `pnpm check` → lint + typecheck + dependency rules + unit/integration tests (must be green)
 - `pnpm test:db` → RLS/integration tests (needs `supabase start`) — from M5
-- `pnpm test:e2e` → Playwright + axe (needs local Supabase, LLM_PROVIDER=mock) — from M5
+- `pnpm test:e2e` → Playwright + axe on the production build + worker (needs local Supabase; mock LLM). New pages get an axe scan in `apps/web/tests/e2e`.
+- `pnpm uxie doctor --launch` → launch readiness against the production env (docs/launch-checklist.md)
 
 ## Architecture rules (enforced by dependency-cruiser, `.dependency-cruiser.cjs`)
 
@@ -33,4 +34,5 @@ Read docs/PRD.md (§0, §4, §8) before changing code. Work milestone by milesto
 
 - Add Redis, queues, vector DBs, ORMs, microservices, or new frameworks without an ADR.
 - Log message content at info level or above.
+- Load scripts, styles or connect to origins not allowed by the CSP in `apps/web/lib/security.ts` (extend it there, with a reason).
 - Weaken RLS or dependency rules to make something pass.

@@ -129,3 +129,106 @@ kept, and store it per the privacy notice.
   student, never for grading. Reveals are logged (`events.type = 'identity_revealed'`).
 - Every export (web and CLI) writes `export_log`. Store export files encrypted and delete them when
   the purpose ends.
+
+## Production setup (M10, PRD §17.1)
+
+Order matters: database first, then the worker, then the web app, then DNS and mail. Record the
+values (not the secrets) in the launch checklist. Dev and prod are separate Supabase projects
+(NFR-5); Vercel Preview uses dev, Production uses prod.
+
+1. **Supabase prod project**: as "Supabase project setup" above (Frankfurt; Pro plan for daily
+   backups, D14). Storage → Settings: upload size limit ≥ `MAX_PDF_MB` (the bucket allows 40 MB).
+   Apply migrations with the **DB migrate** GitHub Action (below), never `seed.sql`.
+2. **GitHub**: Settings → Environments → `dev` and `production` (production: required reviewer =
+   the owner), each with `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`.
+3. **Email provider** (D15: Brevo, or Resend in the EU region): verify the domain; it shows the
+   SPF `TXT`, DKIM `TXT/CNAME` records. Create SMTP credentials for two senders:
+   `auth@<domain>` (Supabase Auth → SMTP) and the app sender `MAIL_FROM` (e.g.
+   `UXie <uxie@<domain>>`, `SMTP_URL=smtps://user:pass@host:465`).
+4. **Namecheap → Advanced DNS** for `<domain>`:
+   - `CNAME uxie → <value Vercel shows>` (after step 6),
+   - the provider's SPF `TXT @` (merge with an existing SPF record: one `v=spf1` per name),
+   - the provider's DKIM records,
+   - `TXT _dmarc → v=DMARC1; p=quarantine; rua=mailto:<owner>`,
+   - optionally `CAA @ 0 issue "letsencrypt.org"` (Vercel's CA).
+5. **Supabase Auth (prod)**: Site URL `https://uxie.<domain>`; redirect allow-list
+   `https://uxie.<domain>/auth/callback` only (preview wildcards belong on the dev project);
+   custom SMTP from step 3 with sender `auth@<domain>`; email templates branded "UXie";
+   leaked-password protection on; the before-user-created hook (step 4 of the project setup).
+6. **Render**: New → Blueprint → this repo; `render.yaml` creates `uxie-worker` (Frankfurt) and the
+   `uxie-prod` env group. Enter the secrets (`LLM_API_KEY`, Supabase URL/keys,
+   `SETTINGS_ENCRYPTION_KEY`). The worker has no public port; it is healthy when `/admin/health`
+   shows a fresh heartbeat.
+7. **Vercel**: import the repo, Root Directory `apps/web`, framework Next.js, plan Pro (D14).
+   Production env = prod values; Preview env = dev values. Required: `APP_URL`,
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`,
+   `SETTINGS_ENCRYPTION_KEY`, `LLM_PROVIDER` + key, `LLM_PRICES_JSON`, `ALLOWED_EMAIL_DOMAINS`,
+   `PRIVACY_NOTICE_VERSION`, `RESEARCH_CONSENT_VERSION`, `MONTHLY_SPEND_CEILING_EUR`,
+   `ALERT_EMAIL`, `SMTP_URL`, `MAIL_FROM`, `RETENTION_REVIEW_DATE`. Domains → add
+   `uxie.<domain>` → create the CNAME it shows (step 4); Vercel issues the certificate.
+8. **First instructor**: register on the production URL, then
+   `pnpm uxie role set <email> instructor` with the prod env exported.
+9. **Check**: `pnpm uxie doctor --launch` and `pnpm uxie doctor --ping` with the prod env, then
+   the [launch checklist](launch-checklist.md).
+
+Security headers (NFR-9) need no setup: `proxy.ts` sets a per-request nonce
+Content-Security-Policy (no `unsafe-eval`, `frame-ancestors 'none'`, `connect-src` limited to the
+Supabase URL) and `next.config.ts` adds HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy` and
+`Permissions-Policy`. Check with `curl -sI https://uxie.<domain>/auth/sign-in`. A new external
+origin (e.g. a CDN) must be added to `lib/security.ts`, or the browser blocks it.
+
+## Releases and rollback (NFR-17)
+
+- **Release** = merge to `main`. Vercel and Render both deploy that commit. A PR with a migration:
+  run **DB migrate** (Actions tab; `dry_run` first, then for real; dev, then production) _before_
+  merging. Migrations stay backward-compatible for one release, so the previous deployment keeps
+  working against the new schema.
+- **Rollback (web)**: Vercel → Deployments → the previous production deployment → "Promote to
+  Production" (instant; deployments are immutable). Then sign in, open a paper, chat once.
+- **Rollback (worker)**: Render → `uxie-worker` → Events → the previous deploy → "Rollback".
+- **Database**: no down-migrations. Fix forward with a new migration, or restore (below).
+- **Rollback drill** (before launch, then once per semester): promote the previous deployment,
+  verify as above, promote the latest again; note the date in the launch checklist.
+
+## Backup and restore drill (NFR-16)
+
+Supabase Pro takes daily backups (PITR as an add-on). Monthly during the pilot, restore into a
+**scratch** project, never over production:
+
+1. Supabase → prod project → Database → Backups → pick yesterday's backup → "Restore to new
+   project" (or download the backup and `psql` it into a fresh scratch project in Frankfurt).
+2. In the scratch project's SQL editor: `select public.reapply_deletion_ledger();` (deletions made
+   after the backup), then `select count(*) from profiles p join deletion_ledger d using
+(pseudonym_id);` must be 0.
+3. Spot-check: `select count(*) from conversations;`, `messages`, the newest `messages.created_at`
+   (≈ backup time), `select count(*) from storage.objects where bucket_id = 'papers';`.
+4. Optional: point a local web app at the scratch project (`apps/web/.env.local`) and open a paper
+   as the instructor.
+5. Delete the scratch project; write the date, backup timestamp and row counts in the launch
+   checklist / this runbook's log.
+
+A real restore = the same steps into a new project, then switch Vercel and Render to its URL and
+keys, re-run the auth settings (Production setup step 5) and announce the data loss window.
+
+## Worker restarts (NFR-17)
+
+On `SIGTERM` (deploy, restart, scale) the worker stops claiming jobs and gives the current job
+`WORKER_SHUTDOWN_GRACE_MS` (20 s) to finish. After that the job is aborted and re-queued at once
+(the log shows `job_requeued_on_shutdown`; the attempt is not counted) and the next worker picks it
+up. A hard kill leaves the job `running` until `WORKER_JOB_TIMEOUT_MS` (15 min) re-queues it.
+Keep the grace below Render's shutdown delay (30 s).
+
+## Alerts and routines (PRD §17.2)
+
+- **Spend alert**: the first tutor turn after this month's spend reaches 80 % of
+  `MONTHLY_SPEND_CEILING_EUR` emails `ALERT_EMAIL` (needs `SMTP_URL`/`MAIL_FROM`), once per month
+  (`alerts_sent` table). `/admin` shows the same warning. At 100 % new replies stop for everyone
+  (`chat_paused`); raise the ceiling in Vercel and redeploy, or wait for the next month.
+- **Weekly during the pilot**: `/admin/usage` (spend, cache hit ratio, errors), `/admin/data-requests`
+  (due dates), `/admin/health`, the class reports (invalid-citation rate, helpfulness), feedback
+  comments on `/admin/conversations?feedback=1`.
+- **Provider or model change**: re-run the eval (`pnpm uxie eval`, PRD §13) and add an ADR before
+  switching production; list the provider in the privacy notice first.
+- **Each semester**: rotate the Anthropic key and the Supabase secret key (Vercel env + Render env
+  group only; redeploy both); export if permitted, then `pnpm uxie purge --before <date>`
+  (Retention above); rollback drill; update `RETENTION_REVIEW_DATE`.

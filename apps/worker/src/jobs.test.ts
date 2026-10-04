@@ -67,7 +67,8 @@ function setup(
     queue: {
       succeed: async (id) => void calls.push(`succeed:${id}`),
       fail: async (id, error) => void calls.push(`fail:${id}:${error}`),
-      requeue: async (id) => void calls.push(`requeue:${id}`),
+      requeue: async (id, _error, attempts) =>
+        void calls.push(attempts === undefined ? `requeue:${id}` : `requeue:${id}:${attempts}`),
     },
     store: () => store,
     extractor: () => opts.extractor ?? unpdfExtractor(),
@@ -90,6 +91,32 @@ const job = (patch: Partial<ClaimedJob> = {}): ClaimedJob => ({
 });
 
 describe("worker jobs (FR-5.1 step 4, FR-5.5, FR-6.4)", () => {
+  it("NFR-17 a shutdown mid-job re-queues it at once, gives the attempt back and saves nothing", async () => {
+    for (const kind of ["ingest", "draft_guide"] as const) {
+      const store = new MemoryStore();
+      if (kind === "draft_guide") {
+        await processJob(job(), setup(store).deps);
+        store.guide = null;
+      }
+      const controller = new AbortController();
+      const { deps, calls } = setup(store, {
+        responder: (call) =>
+          call.purpose === "guide_draft"
+            ? { text: "{}", delayMs: 5_000 }
+            : defaultMockResponder(call),
+      });
+      const running = processJob(job({ kind, attempts: 2 }), {
+        ...deps,
+        signal: controller.signal,
+      });
+      setTimeout(() => controller.abort(), 50);
+      expect(await running, kind).toBe("requeued");
+      expect(calls, kind).toEqual(["requeue:job-1:1"]);
+      expect(store.guide, kind).toBeNull();
+      if (kind === "ingest") expect(store.status).toBe("processing");
+    }
+  });
+
   it("FR-5.1 an ingest job extracts, drafts a valid guide and marks the version ready", async () => {
     const store = new MemoryStore();
     const { deps, calls } = setup(store);

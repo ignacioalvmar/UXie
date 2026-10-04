@@ -59,7 +59,10 @@ export function PaperManager({
           {paper.status === "published" && (
             <>
               {" · "}
-              <Link href={`/papers/${paper.slug}`} className="text-primary hover:underline">
+              <Link
+                href={`/papers/${paper.slug}`}
+                className="text-primary underline underline-offset-2"
+              >
                 Open as student
               </Link>
             </>

@@ -459,3 +459,51 @@ Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, dev server on :3000, wor
   `/account`.
 - Not run: SMTP delivery (no SMTP server configured locally), objective transitions with a real model
   (the mock assessment never advances objectives; transitions are covered by unit and DB tests).
+
+## M10: Hardening and launch readiness
+
+Automated: `pnpm check` (CSP builder and static headers; spend-alert rule and the turn hook firing
+from 80 % and when paused; worker shutdown re-queues ingest and re-draft jobs with the attempt
+given back and saves nothing; `doctor --launch` rules). `pnpm test:db` (`alerts_sent` claimed once
+under concurrency, released for a retry; students cannot read it). `pnpm test:e2e` (Playwright +
+axe, CI job `e2e`): security headers and nonces on real responses, cross-origin mutation refused,
+dynamic 404; register → Mailpit link → onboarding → library → workspace (3 turns, citation chip
+opens "Cited in chat · p. 1", Explain-it gives a hint, progress drawer, Start over) → My
+conversations → account; instructor: every admin page, add paper → upload → worker → approve →
+publish → delete with typed slug; data download → deletion request → completion with the typed
+pseudonym → profile gone, ledger row, sign-in refused. axe (WCAG 2.2 A/AA) on every page and
+dialog in these flows.
+
+Manual, before launch (owner; NFR-20 asks for a keyboard and screen-reader pass):
+
+1. Keyboard only (no mouse), NVDA + Firefox or Chrome on Windows, VoiceOver + Safari on macOS:
+   sign up, sign in, onboarding (character radios, checkbox), library (search, modules on mobile
+   width), workspace: Tab order header → paper tools → pages → chat; the pages scroll with the
+   arrow keys after focusing "Paper pages"; a citation chip moves the reader and is announced;
+   "Explain it to me", progress dialog (focus trapped, Esc closes, focus returns), Start over dialog,
+   feedback buttons (pressed state announced).
+2. Admin with keyboard: content reorder with ↑/↓, the guide editor issue list, test chat, the
+   delete dialogs (disabled until the slug/pseudonym is typed).
+3. 200 % browser zoom and 375 px width: no horizontal scrolling on the student pages.
+4. Security headers on the deployed site: `curl -sI https://uxie.<domain>/auth/sign-in` shows the
+   CSP with a nonce, HSTS, `X-Frame-Options: DENY`; https://securityheaders.com grade A.
+5. Spend alert (dev project, `SMTP_URL` set): set `MONTHLY_SPEND_CEILING_EUR` just above this
+   month's spend / 0.8, send one chat turn: one email to `ALERT_EMAIL`, `/admin` shows the warning,
+   a second turn sends nothing (`select * from alerts_sent`).
+6. Worker restart: upload a PDF, restart the worker during "Extracting text…": log
+   `job_requeued_on_shutdown` (or the job finishes within 20 s), the version ends Ready.
+7. `pnpm uxie doctor --launch` with the production env; then [launch-checklist.md](launch-checklist.md).
+
+Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`).
+
+- `pnpm check`: 422 tests green; `pnpm test:db`: 51/51; `pnpm test:e2e`: 26/26 against the
+  production build on :3100 with the worker (3.6 min).
+- The first axe runs found two issues in the PDF reader (unlabelled-role page containers with
+  `aria-label`, a scrollable region without keyboard access) and a colour-only link on the admin
+  paper page; fixed and green afterwards.
+- Dev server: CSP header with the nonce on every script, `unsafe-eval` only in `next dev`.
+- `pnpm uxie doctor --launch` against the local stack fails as expected (localhost, mock model,
+  draft privacy notice, 1 ready paper) and lists the manual items.
+- Not run (needs the production accounts): custom domain and certificate, SPF/DKIM/DMARC headers,
+  SMTP delivery, 30 MB upload and worker restart on Render, rollback and restore drills, the
+  screen-reader pass, the pilot with the instructor and 2–3 students.
