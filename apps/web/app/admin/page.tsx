@@ -5,13 +5,25 @@ import { effectiveSettings } from "../../lib/llmSettings";
 
 export const metadata: Metadata = { title: "Instructor" };
 
-/** Admin landing (M5). Content management, review, reports and costs arrive in M8–M9. */
+/** Admin landing. Review, reports and costs arrive in M9. */
 export default async function AdminHome() {
   const eff = await effectiveSettings();
   const d = describeLlmSettings(eff.settings);
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-[32px] font-bold tracking-[-0.02em]">Instructor</h1>
+      <section className="rounded-chip border-[1.5px] border-line-soft bg-surface p-5">
+        <h2 className="font-display text-xl font-bold">Content</h2>
+        <p className="mt-2 text-ink-muted">
+          Modules, papers, PDF versions, teaching guides, test chats and publishing.
+        </p>
+        <Link
+          href="/admin/content"
+          className="mt-4 inline-block font-bold text-primary hover:underline"
+        >
+          Manage content
+        </Link>
+      </section>
       <section className="rounded-chip border-[1.5px] border-line-soft bg-surface p-5">
         <h2 className="font-display text-xl font-bold">Inference</h2>
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">

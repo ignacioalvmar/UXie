@@ -128,6 +128,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -147,15 +150,21 @@ importers:
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
-      yaml:
-        specifier: ^2.9.1
-        version: 2.9.1
 
   apps/worker:
     dependencies:
       '@uxie/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@uxie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@uxie/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@uxie/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       pino:
         specifier: ^10.3.1
         version: 10.3.1

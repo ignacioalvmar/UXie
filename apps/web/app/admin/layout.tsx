@@ -25,6 +25,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Link href="/admin" className={nav}>
               Overview
             </Link>
+            <Link href="/admin/content" className={nav}>
+              Content
+            </Link>
             <Link href="/admin/settings/ai" className={nav}>
               AI provider
             </Link>

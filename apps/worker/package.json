@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@uxie/core": "workspace:*",
+    "@uxie/db": "workspace:*",
+    "@uxie/ingest": "workspace:*",
+    "@uxie/llm": "workspace:*",
     "pino": "^10.3.1",
     "tsx": "^4.23.15"
   }

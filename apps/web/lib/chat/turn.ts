@@ -6,6 +6,7 @@ import {
 import type { LearnerState, Mode, TurnEvent } from "@uxie/core";
 import type { GuideSummary } from "@uxie/db";
 import { TutorError, type TurnResult, type TurnStream } from "@uxie/tutor";
+import { turnDebugDto } from "../admin/debug";
 import { checkLimits, MINUTE_MS, monthStart, utcDay } from "../limits";
 import type { ApiErrorBody, ChatUIMessage, ProgressDto, TutorMeta } from "./types";
 
@@ -64,6 +65,8 @@ export interface ChatDeps {
   modes: readonly Mode[];
   /** Next.js `after()`: keeps the function alive until the reply is saved (client may leave). */
   after: (task: Promise<unknown>) => void;
+  /** Instructor test chats (FR-6.5): add the debug panel data to the finish metadata. */
+  debug?: boolean;
   now?: () => Date;
   onError?: (e: unknown, context: Record<string, unknown>) => void;
 }
@@ -269,6 +272,7 @@ async function pumpTurn(
         citations: result.citations,
         progress: progressDto(result.state, guide),
         demonstrated: newlyDemonstrated(result.debug?.previousState ?? null, result.state, guide),
+        ...(deps.debug ? { debug: turnDebugDto(result) } : {}),
       },
     });
   } catch (e) {

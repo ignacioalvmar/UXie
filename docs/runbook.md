@@ -55,3 +55,19 @@ insert into public.auth_allowed_domains (domain) values ('thi.de'), ('studmail.t
 Set the new `SETTINGS_ENCRYPTION_KEY` in Vercel and Render, redeploy, then re-enter each provider
 key on `/admin/settings/ai` (the page flags keys that no longer decrypt). Env keys keep working
 meanwhile.
+
+## Ingestion worker (FR-5.1, FR-9.5)
+
+The Render worker polls `ingest_jobs` every `WORKER_POLL_MS`: it upserts `worker_heartbeats`
+(`ingest-worker`), re-queues jobs `running` longer than `WORKER_JOB_TIMEOUT_MS` (after 2 attempts the
+job and its version fail), then claims one job with `claim_ingest_job()`. Two kinds: `ingest`
+(download the PDF, extract, analyse, draft the guide) and `draft_guide` ("Regenerate draft"). Guide
+drafting uses the effective AI settings, so the worker needs `SETTINGS_ENCRYPTION_KEY` as well as
+the Supabase keys.
+
+- **Stuck "Processing…"**: check the heartbeat (`select * from worker_heartbeats`) and the Render
+  logs (`job_error`, `poll_failed`). A restart is safe: a job interrupted mid-run is re-queued by the
+  timeout and runs again (pages are replaced, not duplicated).
+- **Version failed with "no extractable text"**: the PDF is scanned. With `DOCLING_URL` set, use
+  "Retry with docling (OCR)" on the version page; otherwise upload a PDF with a text layer.
+- **Locally**: `pnpm --filter @uxie/worker dev` with the Supabase vars in `.env` (or exported).
