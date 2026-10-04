@@ -15,6 +15,9 @@
     "depcruise": "depcruise apps packages --config .dependency-cruiser.cjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
     "check": "pnpm lint && pnpm typecheck && pnpm depcruise && pnpm test:coverage"
   },
   "devDependencies": {
@@ -26,6 +29,7 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
+    "supabase": "^2.119.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
     "vitest": "^3.2.7"

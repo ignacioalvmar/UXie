@@ -17,7 +17,8 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 | M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
 | M3        | Ingestion (unpdf, docling), analysis, guide drafting      | done (verified with Claude)         |
 | M4        | Eval harness, benchmark, load test (decision gate)        | harness done; provider ADR proposed |
-| M5–M10    | Data layer, UI, admin, launch                             | planned                             |
+| M5        | Supabase data layer, RLS, auth, onboarding, AI settings   | in progress                         |
+| M6–M10    | Workspace, tutor UI, admin, launch                        | planned                             |
 
 ## Layout
 
@@ -64,4 +65,6 @@ per environment once the data layer lands (M5). Attach `uxie.<your-domain>` late
 `uxie-worker` background worker (Frankfurt) and the `uxie-prod` env group. Enter the secret values
 when prompted (`LLM_API_KEY`, Supabase keys). The worker has no public port.
 
-**Supabase.** Created at M5 (EU/Frankfurt, separate dev and prod projects).
+**Supabase.** EU/Frankfurt, separate dev and prod projects; setup steps (Auth hook, SMTP,
+password rules, redirect URLs) are in [docs/runbook.md](docs/runbook.md). Locally:
+`pnpm exec supabase start` (Docker), then `pnpm test:db`.

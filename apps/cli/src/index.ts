@@ -8,6 +8,7 @@ import { chatCommand } from "./commands/chat";
 import { doctorCommand } from "./commands/doctor";
 import { evalCommand } from "./commands/eval";
 import { loadtestCommand } from "./commands/loadtest";
+import { roleSetCommand } from "./commands/role";
 import { ingestCommand, type IngestCliOptions } from "./commands/ingest";
 import { repoRoot } from "./paths";
 
@@ -162,7 +163,7 @@ program
   .argument("<email>")
   .argument("<role>", "student | instructor")
   .description("Assign a role (FR-1.6)")
-  .action(later("M5"));
+  .action(run(roleSetCommand));
 
 program
   .command("doctor")

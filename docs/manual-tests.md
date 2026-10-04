@@ -148,3 +148,58 @@ Last run: 2026-10-03.
 - Step 5: Sonnet 5.5 @ low, TTFT p95 3.9/3.8/4.0 s at 5/10/15, no errors.
 - Step 6: pending. The instructor benchmarks with real papers and a Gemini candidate, then
   accepts or changes ADR-023; a full re-run with the final prompts is still to be done.
+
+## M5: Data layer and authentication
+
+Automated: `pnpm check` (auth rules: domain allow-list, open-redirect guard, error mapping; the
+settings view sent to the browser contains no key; repositories type-check against the tutor
+ports). `pnpm test:db` with the local stack (also the CI `db` job): RLS matrix for student A/B,
+instructor and anon (guides invisible to students, `llm_credentials` unreadable by everyone,
+no browser writes, server-only functions refused); sign-up hook rejects non-university emails
+and short passwords; repositories (idempotent student messages, summary patch, atomic usage
+counter, FTS search, spend in SQL, role change); settings store keeps only ciphertext and flags
+a rotated key.
+
+Setup: Docker Desktop running, `pnpm exec supabase start`, copy `supabase status -o env` values
+into `.env` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`SUPABASE_SECRET_KEY`), set `SETTINGS_ENCRYPTION_KEY`, `pnpm dev`.
+
+1. Register `new.student@thi.de` → "Check your inbox" → open the email in Mailpit
+   (http://127.0.0.1:54324) → link lands on `/onboarding` → acknowledge, leave research unticked,
+   pick a character → library shows "Foundations of interaction" with the visible-cues paper.
+2. Register `someone@gmail.com` → domain error in the form. Bypass the form
+   (`curl` to `/auth/v1/signup` with the publishable key) → rejected by the hook.
+3. Sign in with a wrong password → "That email and password don't match"; the email is kept, the
+   password cleared, focus on the alert.
+4. Reset: "Forgot password?" → email → Mailpit link → "Set a new password" → sign in with it.
+   Re-open the same link → "That link has expired".
+5. `/account`: save a project description; withdraw and re-give research consent; "Sign out on
+   all devices" ends the session in a second browser too.
+6. As a student, open `/admin` and `/admin/settings/ai` → 404.
+7. `pnpm uxie role set new.student@thi.de instructor` → `/admin` works. On `/admin/settings/ai`
+   switch Tutor replies to OpenAI or Gemini, paste a key, **Test connection** → each role answers;
+   **Save** → "key set …abcd"; reload: the key field is empty, the network tab and the page
+   source never contain the key; `select api_key_sealed from llm_credentials` shows only
+   `v1.…` ciphertext. A test chat turn after that uses the new provider (M6 debug panel; until
+   then `pnpm uxie doctor --ping` with the same settings).
+8. `pnpm uxie doctor` → database, storage bucket and domain allow-list all ✓.
+
+Last run: 2026-10-04 (local stack, Docker; `LLM_PROVIDER=mock`). Local web env goes in the
+git-ignored `apps/web/.env.local` (values from `supabase status -o env`).
+
+- `pnpm test:db`: 18/18 locally and in the CI `db` job.
+- Step 1: pass (sign-up → Mailpit link → onboarding with Miso → library with the seeded paper).
+- Step 2: form shows the domain error; the hook-level rejection is covered by `pnpm test:db`.
+- Step 3: pass (alert focused, email kept, password cleared, button "Try again").
+- Step 4: pass, including the expired link. Found and fixed: re-using the current password
+  showed "Something went wrong"; it now says "That is your current password…" (`same_password`).
+- Step 5: pass for profile and research consent (stored with version and timestamp); "sign out on
+  all devices" not separately exercised.
+- Step 6: pass (404 for a student on `/admin/settings/ai`).
+- Step 7: pass with a made-up OpenAI key: Test connection reports `auth_failed` for the tutor and
+  success for the mock roles; Save stores only `v1.…` ciphertext with hint `…abcd`, the audit
+  event lists `keys_changed: ["openai"]` without the value, and the reloaded page and its HTML
+  contain no key. Found and fixed: the provider dropdown showed "Anthropic" when env used `mock`.
+  **Pending:** the real provider switch with a valid OpenAI/Gemini key and a test-chat turn on it
+  (needs a key, and the chat UI from M6).
+- Step 8: pass (database, storage bucket, domains agree).

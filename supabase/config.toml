@@ -1,0 +1,70 @@
+# Local Supabase stack for development and the RLS/e2e suites (PRD §15, `pnpm test:db`).
+# Hosted projects (dev/prod, EU Frankfurt) are configured in the dashboard to match: see
+# docs/runbook.md "Supabase project setup".
+project_id = "uxie"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+# Local mail catcher (Mailpit) for verification and reset emails.
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "40MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://127.0.0.1:3000/auth/callback"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+# FR-1.1: at least 10 characters.
+minimum_password_length = 10
+password_requirements = ""
+
+[auth.rate_limit]
+email_sent = 30
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# FR-1.2: email verification before any chat access.
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+# FR-1.1: domain allow-list, second line of defence after the server action (0004_auth_hook.sql).
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_before_user_created"
+
+[analytics]
+enabled = false

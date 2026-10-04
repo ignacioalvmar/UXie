@@ -1,9 +1,21 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type { NextConfig } from "next";
 
+// Local development: also read the repo-root .env (Next only reads apps/web/.env*). Values that
+// are already set (Vercel env, apps/web/.env.local) win; loadEnvFile never overwrites.
+const rootEnv = resolve(import.meta.dirname, "../../.env");
+if (process.env.NODE_ENV !== "production" && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
+
 const config: NextConfig = {
-  // Workspace packages ship TypeScript source.
-  transpilePackages: ["@uxie/core", "@uxie/character"],
+  // Workspace packages ship TypeScript source (ADR-013).
+  transpilePackages: ["@uxie/core", "@uxie/character", "@uxie/db", "@uxie/llm", "@uxie/tutor"],
   poweredByHeader: false,
+  // The privacy notice is read from disk at request time; ship it with the functions.
+  outputFileTracingIncludes: {
+    "/privacy": ["./content/**"],
+    "/onboarding": ["./content/**"],
+  },
 };
 
 export default config;

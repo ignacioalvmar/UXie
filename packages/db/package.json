@@ -3,14 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Supabase implementations of the tutor ports.",
+  "description": "Supabase implementations of the tutor ports, accounts and settings store.",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "seed:generate": "tsx scripts/make-seed.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
     "@uxie/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "yaml": "^2.9.1"
   }
 }

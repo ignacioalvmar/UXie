@@ -26,6 +26,22 @@ jobs:
       - run: pnpm check
       - run: pnpm --filter @uxie/web build
 
+  db:
+    # PRD §15: RLS matrix and repositories against the local Supabase stack (Docker).
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime
+      - run: pnpm test:db
+
   audit:
     # NFR-10. Reported, not blocking, until the first production release (M10).
     runs-on: ubuntu-latest
