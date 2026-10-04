@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DataRightsRepo, isOpenRequest } from "@uxie/db";
 import { requireUser } from "../../../lib/auth";
+import { serviceDb } from "../../../lib/supabase/server";
 import { signOut } from "../../(auth)/auth/actions";
 import { ConsentForm, ProfileForm } from "./AccountForms";
+import { DataRights } from "./DataRights";
 
 export const metadata: Metadata = { title: "Account" };
 
-/** /account basics (M5): profile, research consent, sessions. Data rights arrive in M9 (FR-8.x). */
+/** /account: profile, research consent, your data (FR-8.1, FR-8.2), sessions. */
 export default async function AccountPage() {
   const { user, profile } = await requireUser();
+  const deletion = (await new DataRightsRepo(serviceDb()).requestsOf(user.id)).find(
+    (r) => r.type === "deletion" && isOpenRequest(r),
+  );
   const section = "flex flex-col gap-4 rounded-chip border-[1.5px] border-line-soft bg-surface p-5";
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -42,6 +48,19 @@ export default async function AccountPage() {
           </Link>
           .
         </p>
+      </section>
+
+      <section aria-labelledby="data-h" className={section}>
+        <h2 id="data-h" className="font-display text-xl font-bold">
+          Your data
+        </h2>
+        <DataRights
+          openDeletion={
+            deletion
+              ? { status: deletion.status as "open" | "in_progress", dueAt: deletion.dueAt }
+              : null
+          }
+        />
       </section>
 
       <section aria-labelledby="sessions-h" className={section}>

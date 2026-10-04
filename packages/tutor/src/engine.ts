@@ -336,6 +336,14 @@ export class TutorEngine {
             temperature: deps.config.temperature ?? null,
             context_strategy: strategy,
             pages_included: built.pagesIncluded,
+            learner: {
+              mode: state.mode,
+              active_objective: state.active_objective,
+              objectives: state.objectives,
+              attempts: state.attempts,
+              stuck_requests: state.stuck_requests,
+              assessment_failed: assessed.failure !== null,
+            },
           },
         });
         // Keep summary fields the summarizer may have written meanwhile (see ConversationRepo.saveSummary).

@@ -74,6 +74,18 @@ export interface GenerationInfo {
   temperature: number | null;
   context_strategy: "full" | "retrieval";
   pages_included: number[] | "all";
+  /**
+   * Learner state after this turn, without free text, for the instructor's state timeline
+   * (FR-7.1): objective transitions are the differences between consecutive replies.
+   */
+  learner: {
+    mode: Mode;
+    active_objective: string | null;
+    objectives: LearnerState["objectives"];
+    attempts: number;
+    stuck_requests: number;
+    assessment_failed: boolean;
+  };
 }
 
 export interface TutorMessageCompletion {

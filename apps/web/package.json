@@ -20,6 +20,7 @@
     "@uxie/tutor": "workspace:*",
     "ai": "^7.0.127",
     "next": "^16.3.8",
+    "nodemailer": "^10.0.13",
     "pdfjs-dist": "6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint-config-next": "^16.3.8",

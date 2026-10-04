@@ -79,6 +79,14 @@ describe("TutorEngine: a full turn (FR-4.2, PRD §4.4)", () => {
       temperature: null,
       context_strategy: "full",
       pages_included: "all",
+      learner: {
+        mode: "understand",
+        active_objective: res.state.active_objective,
+        objectives: res.state.objectives,
+        attempts: 1,
+        stuck_requests: 0,
+        assessment_failed: false,
+      },
     });
 
     const tutorUsage = h.usageEvents.find((e) => e.purpose === "tutor")!;
