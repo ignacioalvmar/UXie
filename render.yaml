@@ -45,3 +45,6 @@ envVarGroups:
         sync: false
       - key: SUPABASE_SECRET_KEY
         sync: false
+      # Decrypts provider keys saved on /admin/settings/ai (guide drafting uses them, FR-9.7).
+      - key: SETTINGS_ENCRYPTION_KEY
+        sync: false

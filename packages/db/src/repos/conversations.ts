@@ -345,14 +345,24 @@ export class SupabaseConversationRepo {
     if (res.error) throw new DbError(`release lock: ${res.error.message}`, res.error.code);
   }
 
-  /** The student's active conversation on a version (one at most, unique index), or null. */
-  async findActive(studentId: string, paperVersionId: string): Promise<DbConversation | null> {
+  /**
+   * The student's active conversation on a version (one at most, unique index), or null.
+   * `isTest` picks instructor test chats (FR-6.5) instead of real conversations.
+   */
+  async findActive(
+    studentId: string,
+    paperVersionId: string,
+    opts: { isTest?: boolean } = {},
+  ): Promise<DbConversation | null> {
     const res = await this.db
       .from("conversations")
       .select("id, student_id, paper_version_id, mode, state, status, is_test")
       .eq("student_id", studentId)
       .eq("paper_version_id", paperVersionId)
       .eq("status", "active")
+      .eq("is_test", opts.isTest ?? false)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (res.error) throw new DbError(`active conversation: ${res.error.message}`, res.error.code);
     return res.data ? toConversation(res.data as ConversationRow) : null;

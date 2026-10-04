@@ -310,3 +310,83 @@ Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, dev server on :3000).
   re-measured on font load and resize).
 - Not yet run by hand: step 4's project card with a student without a project (covered by the
   route test), step 8 (needs a second version; M8 adds version upload).
+
+## M8: Instructor content management
+
+Automated: `pnpm check` (worker jobs on memory stores with the mock LLM: ingest → ready with a
+valid guide, scanned PDF → version failed with the docling hint, infrastructure error → re-queued
+then failed after 2 attempts, Regenerate draft from stored pages, provider failure recorded as a
+guide issue; test-chat turns with the debug panel on the real engine, never on student routes;
+guide YAML parsing/validation; state diff; admin request bodies). `pnpm test:db`
+(`admin.test.ts`: upload through a real signed upload URL → claim → store → ready; publishing
+blocked without an approved, valid guide, stale approvals refused; published guides read-only and
+"New version from this one"; replacing the PDF supersedes v1 while its conversations stay on it;
+move keeps `module_title_at_start`; retire hides the paper and keeps history; deletion impact,
+current version undeletable, paper deletion removes rows and files; stale job re-queue/fail;
+heartbeat; the new SQL functions refuse signed-in users).
+
+Setup: as M6 (`supabase start`, seed, `pnpm db:seed-storage`, `LLM_PROVIDER=mock`), plus the
+worker: `pnpm --filter @uxie/worker dev` with the Supabase vars in `.env` (or exported). Sign in as
+`instructor@thi.de` / `uxie-dev-password`.
+
+1. `/admin` → "Manage content". The seeded module shows "Published" and its paper "v1 live".
+2. "New module" (title fills the slug) → appears as Draft with the hint that students see it only
+   when published. "Rename" edits title and description; "Publish" / "Unpublish" / "Archive".
+3. Reorder modules and papers with drag & drop and with ↑/↓ (keyboard: Tab to ↑/↓, Enter). The
+   order survives a reload; the student library shows the new order.
+4. "Add a paper" → title, slug, authors, year → "Create and upload PDF" opens the paper page with
+   the upload card highlighted. Choose `fixtures/papers/visible-cues/source.pdf` → Upload: progress
+   bar, then "Queued…", "Extracting text…", "Drafting the teaching guide…", "Ready", and the link
+   to v1. A file over `MAX_PDF_MB` is refused before uploading.
+5. Version page, Extraction tab: page 1 shows the PDF page, its extracted text and "None for this
+   page"; page 7 shows "References start". Upload `fixtures/papers/scanned-page/source.pdf` to a
+   second paper: "Pages with warnings: 3" jumps to the figure-only page.
+6. Teaching guide tab: the drafted guide, "Drafted by …". Break it (delete a starter question):
+   the issue list updates as you type; clicking an issue moves the caret to the field; Approve is
+   disabled. "Save draft" saves with issues. Fix it, save, "Approve" → badge "Approved".
+   "Export YAML" downloads `<slug>-v1-guide.yaml`; "Import YAML" loads a file as unsaved changes.
+7. "Regenerate draft…" → confirm → the job runs and the new draft is loaded.
+8. Test as student tab: "New test chat" → UXie greets; send an answer: the reply shows the help
+   level and "Show debug": help level, model, prompt version, context, tokens (cached / cache
+   write), assessment tokens, latency, cost, state changes, assessment JSON. "Explain it to me" ×3
+   → Hint 1, Hint 2, Explanation. Switch to Critique (allowed in tests even if not offered to
+   students). A citation chip opens that page in the Extraction tab. The test chat does not
+   appear in `/conversations` of any student and has `is_test = true`.
+9. Publish v1 (header button, enabled only with an approved, valid guide). As a student
+   (`student.b`), open the paper and chat once.
+10. Paper page → replace the PDF → v2 ingests → approve → publish. v1 is "superseded"; the
+    student's old conversation stays on v1 with the "newer version" banner; a new conversation
+    (Start over or the banner link) uses v2. v1's guide is read-only; "New version from this one"
+    makes v3 `ready` with the guide as a draft.
+11. Move the paper to another (published) module: the library shows it there; `select
+module_title_at_start from conversations` still shows the old module for old conversations.
+12. Retire: gone from the library; `/papers/<slug>` shows history but no new conversation
+    (`POST /api/conversations` → `410 paper_unavailable`); "Un-retire" restores it.
+13. Danger zone → "Delete paper permanently…": the dialog lists versions, files, conversations,
+    messages and students; the button stays disabled until the slug is typed (and the research
+    box is ticked when a consenting student is affected). After deletion: rows and Storage files
+    gone, an `events` row `paper_deleted` with the counts.
+14. Failed ingestion: stop the worker, upload, start it with an unreachable `DOCLING_URL` and
+    `EXTRACTOR=docling`, or upload a PDF without text: the version shows the error and "Retry
+    ingestion" (and "Retry with docling (OCR)" when `DOCLING_URL` is set). Kill the worker during a
+    job and set `WORKER_JOB_TIMEOUT_MS=60000`: the job is re-queued and completes after restart.
+15. CLI: `pnpm uxie guide pull visible-cues --out g.yaml`, edit, `pnpm uxie guide push
+visible-cues g.yaml` (on a published version: refused as read-only), `pnpm uxie guide approve
+visible-cues`, `pnpm uxie publish visible-cues`, `pnpm uxie retire visible-cues [--undo]`.
+
+Last run: 2026-10-04 (local stack, `LLM_PROVIDER=mock`, worker running, dev server on :3000).
+
+- `pnpm check`: 384 tests green; `pnpm test:db`: 39/39.
+- End to end over HTTP as the seeded instructor and student B (script, not the browser): module
+  and paper created; upload through the signed URL (PUT 200) → job `succeeded` (extract → analyze
+  → draft_guide) → v1 `ready` with 7 pages, `references_start`, a valid mock draft; publish before
+  approval → `guide_not_approved`; broken YAML → 422; test chat start + turn with the debug panel
+  (`hint:0`, prompt version, tokens, state changes); approve → publish; student conversation on
+  v1; v2 uploaded, approved, published → old conversation still on v1 with
+  `isCurrentVersion=false`, a new one on v2; move keeps "E2E module" on old conversations;
+  retired → not in the library, new conversation `410 paper_unavailable`, history `200`; delete
+  impact `{versions 2, files 2, conversations 3, messages 8, students 1}`, wrong slug refused,
+  deletion `200`. Admin pages render for the instructor (`/admin`, `/admin/content`, paper and
+  version pages: 200); a student gets 404 from `/api/admin/*`.
+- Not yet run by hand in the browser: steps 2–8 and 13 (drag & drop, live validation, the test
+  chat UI and dialogs) — the browser profile used was signed in as a student.

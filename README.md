@@ -10,16 +10,18 @@ The specification is [docs/PRD.md](docs/PRD.md); decisions are logged in
 
 ## Status
 
-| Milestone | Scope                                                     | State                               |
-| --------- | --------------------------------------------------------- | ----------------------------------- |
-| M0        | Monorepo, tooling, dependency rules, CI, deploy configs   | done (deploy pending account setup) |
-| M1        | Pure pedagogical core                                     | done                                |
-| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat | done (verified with Claude)         |
-| M3        | Ingestion (unpdf, docling), analysis, guide drafting      | done (verified with Claude)         |
-| M4        | Eval harness, benchmark, load test (decision gate)        | harness done; provider ADR proposed |
-| M5        | Supabase data layer, RLS, auth, onboarding, AI settings   | done (provider switch check in M6)  |
-| M6        | Library, workspace (PDF + chat), limits, lock, retries    | done (mock LLM; local stack)        |
-| M7–M10    | Tutor UI features, admin, reports, launch                 | planned                             |
+| Milestone | Scope                                                       | State                               |
+| --------- | ----------------------------------------------------------- | ----------------------------------- |
+| M0        | Monorepo, tooling, dependency rules, CI, deploy configs     | done (deploy pending account setup) |
+| M1        | Pure pedagogical core                                       | done                                |
+| M2        | LLM gateway (Anthropic, OpenAI, Gemini), engine, CLI chat   | done (verified with Claude)         |
+| M3        | Ingestion (unpdf, docling), analysis, guide drafting        | done (verified with Claude)         |
+| M4        | Eval harness, benchmark, load test (decision gate)          | harness done; provider ADR proposed |
+| M5        | Supabase data layer, RLS, auth, onboarding, AI settings     | done (provider switch check in M6)  |
+| M6        | Library, workspace (PDF + chat), limits, lock, retries      | done (mock LLM; local stack)        |
+| M7        | Modes, Explain-it, progress, Start over, feedback           | done (mock LLM; local stack)        |
+| M8        | Admin content: upload, worker ingest, guides, test, publish | done (mock LLM; local stack)        |
+| M9–M10    | Review, reports, exports, data rights, launch               | planned                             |
 
 ## Layout
 
@@ -44,13 +46,16 @@ pnpm install
 cp .env.example .env     # LLM_PROVIDER=mock works without any keys
 pnpm check               # lint + typecheck + dependency rules + tests
 pnpm dev                 # web on http://localhost:3000
-pnpm --filter @uxie/worker dev
+pnpm --filter @uxie/worker dev   # ingestion worker; needs the Supabase vars in .env (or exported)
 pnpm uxie --help
 pnpm uxie chat visible-cues --provider mock --debug   # terminal tutor, no keys needed
 pnpm uxie ingest paper.pdf --paper local-x --local     # extract + draft a guide into fixtures/papers/local-x
 pnpm uxie eval visible-cues --runs 1 --turns 4         # simulated students + judge → eval-results/<date>/
 pnpm uxie eval visible-cues --providers anthropic:claude-sonnet-5-5@low,anthropic:claude-haiku-4-5
 pnpm uxie loadtest --concurrency 5,10,15 --duration 1m # TTFT p95 + error rate under load
+pnpm uxie guide pull visible-cues --out guide.yaml      # edit a DB guide in your editor …
+pnpm uxie guide push visible-cues guide.yaml           # … validate + save as draft (newest version)
+pnpm uxie guide approve visible-cues && pnpm uxie publish visible-cues
 ```
 
 ## Deploy (walking skeleton)

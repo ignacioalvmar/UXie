@@ -19,6 +19,7 @@ const config: NextConfig = {
     "/api/conversations": ["../../prompts/**"],
     "/api/conversations/[id]/messages": ["../../prompts/**"],
     "/api/conversations/[id]/mode": ["../../prompts/**"],
+    "/api/admin/versions/[id]/test-chat": ["../../prompts/**"],
   },
 };
 

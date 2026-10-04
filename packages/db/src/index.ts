@@ -7,3 +7,6 @@ export * from "./repos/usage";
 export * from "./repos/accounts";
 export * from "./repos/studentViews";
 export * from "./repos/feedback";
+export * from "./repos/admin";
+export * from "./repos/ingest";
+export * from "./content";

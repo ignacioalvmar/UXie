@@ -10,6 +10,13 @@ import { evalCommand } from "./commands/eval";
 import { loadtestCommand } from "./commands/loadtest";
 import { roleSetCommand } from "./commands/role";
 import { ingestCommand, type IngestCliOptions } from "./commands/ingest";
+import {
+  guideApproveCommand,
+  guidePullCommand,
+  guidePushCommand,
+  publishCommand,
+  retireCommand,
+} from "./commands/content";
 import { repoRoot } from "./paths";
 
 const envFile = resolve(repoRoot, ".env");
@@ -66,32 +73,37 @@ program
 const guide = program.command("guide").description("Edit teaching guides in your editor");
 guide
   .command("pull")
-  .argument("<paper>")
-  .option("--version <n>")
-  .description("Write the guide as YAML")
-  .action(later("M8"));
+  .argument("<paper>", "paper slug")
+  .option("--version <n>", "version number (default: newest)")
+  .option("--out <file>", "write to a file instead of stdout")
+  .description("Write the guide as YAML (FR-6.4)")
+  .action(run(guidePullCommand));
 guide
   .command("push")
-  .argument("<paper>")
-  .argument("<file>")
-  .description("Validate and upload a YAML guide")
-  .action(later("M8"));
+  .argument("<paper>", "paper slug")
+  .argument("<file>", "YAML file")
+  .option("--version <n>", "version number (default: newest)")
+  .description("Validate and save a YAML guide as a draft (FR-6.4)")
+  .action(run(guidePushCommand));
 guide
   .command("approve")
-  .argument("<paper>")
-  .description("Approve the draft guide")
-  .action(later("M8"));
+  .argument("<paper>", "paper slug")
+  .option("--version <n>", "version number (default: newest)")
+  .description("Approve the guide; it must validate (FR-6.4)")
+  .action(run(guideApproveCommand));
 
 program
   .command("publish")
-  .argument("<paper>")
-  .description("Publish the ready version (FR-6.6)")
-  .action(later("M8"));
+  .argument("<paper>", "paper slug")
+  .option("--version <n>", "version number (default: newest ready version)")
+  .description("Publish a ready version with an approved guide (FR-6.6)")
+  .action(run(publishCommand));
 program
   .command("retire")
-  .argument("<paper>")
-  .description("Retire a paper (FR-6.2)")
-  .action(later("M8"));
+  .argument("<paper>", "paper slug")
+  .option("--undo", "un-retire the paper")
+  .description("Retire a paper: no new conversations, history intact (FR-6.2)")
+  .action(run(retireCommand));
 
 program
   .command("chat")

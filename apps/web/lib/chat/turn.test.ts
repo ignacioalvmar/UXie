@@ -14,6 +14,7 @@ import {
 } from "@uxie/tutor/testing";
 import { handleReset, handleTurn, type ChatDeps, type ChatStore, type TurnInput } from "./turn";
 import type { TutorMeta } from "./types";
+import { handleTestChat, type TestChatStore } from "../admin/testChatTurn";
 
 /**
  * PRD §15 "Web API": the chat route's rules against the real TutorEngine on in-memory ports with
@@ -522,5 +523,111 @@ describe("FR-3.5 Start over", () => {
     const res = await handleReset(w.deps, { studentId: STUDENT, conversationId: w.conversationId });
     expect(res.status).toBe(410);
     expect(w.conversations.conversations.get(w.conversationId)!.status).toBe("active");
+  });
+});
+
+describe("FR-6.5 Test as student (debug panel)", () => {
+  const INSTRUCTOR = "00000000-0000-4000-8000-0000000000d4";
+  const testStore = (guideValid = true): TestChatStore => ({
+    ...w.deps.store,
+    async ownConversation(studentId, id) {
+      const c = w.conversations.conversations.get(id);
+      return c && c.studentId === studentId
+        ? {
+            id: c.id,
+            paperId: "paper-1",
+            paperVersionId: c.paperVersionId,
+            mode: c.mode,
+            status: c.status,
+          }
+        : null;
+    },
+    async openTestConversation(instructorId, versionId, mode) {
+      if (!guideValid)
+        return { ok: false, status: 409, code: "guide_invalid", message: "Fix the guide first." };
+      for (const c of w.conversations.conversations.values())
+        if (c.studentId === instructorId && c.status === "active")
+          w.conversations.close(c.id, "reset");
+      const c = w.conversations.create({
+        studentId: instructorId,
+        paperVersionId: versionId,
+        guide: fixture.guide,
+        mode,
+      });
+      return { ok: true, conversationId: c.id, created: true };
+    },
+  });
+
+  it("a new test chat greets; finish metadata carries assessment, help level, state diff, prompt version and tokens", async () => {
+    const store = testStore();
+    const deps = { ...w.deps, debug: true };
+    const opened = await chunks(
+      await handleTestChat(store, deps, {
+        instructorId: INSTRUCTOR,
+        versionId: VERSION,
+        clientMessageId: newId(),
+      }),
+    );
+    await Promise.all(w.pending);
+    const conversationId = opened.find((p) => p.type === "start")!.messageMetadata!.conversationId!;
+    expect(conversationId).not.toBe(w.conversationId);
+
+    const reply = await chunks(
+      await handleTestChat(store, deps, {
+        instructorId: INSTRUCTOR,
+        versionId: VERSION,
+        conversationId,
+        clientMessageId: newId(),
+        text: "Signifiers are cues that show where to act.",
+      }),
+    );
+    await Promise.all(w.pending);
+    const debug = reply.find((p) => p.type === "finish")!.messageMetadata!.debug!;
+    expect(debug.help).toMatch(/^(ask|hint:[0-9]|explain|check)$/);
+    expect(debug.assessment).toMatchObject({ intent: "answer" });
+    expect(debug.promptVersion).toMatch(/^base@[0-9a-f]{12}[+]understand@/);
+    expect(debug.tokens).toMatchObject({
+      input: expect.any(Number),
+      cachedInput: expect.any(Number),
+    });
+    expect(debug.stateChanges.map((c) => c.path)).toContain("attempts");
+    expect(debug.provider).toBe("mock");
+  });
+
+  it("student routes never carry the debug panel", async () => {
+    const parts = await chunks(await handleTurn(w.deps, say(w, "An answer.")));
+    await Promise.all(w.pending);
+    expect(parts.find((p) => p.type === "finish")!.messageMetadata).not.toHaveProperty("debug");
+  });
+
+  it("refuses an invalid guide (409), others' test chats (404) and another version's (404)", async () => {
+    const bad = await handleTestChat(
+      testStore(false),
+      { ...w.deps, debug: true },
+      {
+        instructorId: INSTRUCTOR,
+        versionId: VERSION,
+        clientMessageId: newId(),
+      },
+    );
+    expect(bad.status).toBe(409);
+    expect(await bad.json()).toMatchObject({ code: "guide_invalid" });
+
+    const theirs = await handleTestChat(testStore(), w.deps, {
+      instructorId: INSTRUCTOR,
+      versionId: VERSION,
+      conversationId: w.conversationId,
+      clientMessageId: newId(),
+      text: "hi",
+    });
+    expect(theirs.status).toBe(404);
+    const otherVersion = await handleTestChat(testStore(), w.deps, {
+      instructorId: STUDENT,
+      versionId: "00000000-0000-4000-8000-0000000000ff",
+      conversationId: w.conversationId,
+      clientMessageId: newId(),
+      text: "hi",
+    });
+    expect(otherVersion.status).toBe(404);
   });
 });

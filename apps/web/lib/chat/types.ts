@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai";
 import type { Citation, HelpLevel, Mode, ObjectiveKind, ObjectiveStatus } from "@uxie/core";
+import type { TurnDebugDto } from "../admin/debug";
 
 /**
  * Shapes shared by the chat routes and the browser (PRD §11). Nothing here may carry teaching-guide
@@ -47,6 +48,8 @@ export interface TutorMeta {
   switchTo?: Mode;
   /** The student's rating of this tutor message (FR-3.6). */
   feedback?: FeedbackDto;
+  /** Instructor test chats only (FR-6.5): the debug panel data; null for a replayed reply. */
+  debug?: TurnDebugDto | null;
   /** Client only: a reply that failed or was interrupted and is not saved. */
   failed?: boolean;
 }
