@@ -37,7 +37,8 @@ Lawful basis for the service: [e.g. Art. 6(1)(e) GDPR with the relevant state hi
   your email address; revealing your identity is a separate, logged action.
 - **Hosting providers** (processors with data processing agreements): Vercel (web application,
   EU region Frankfurt), Render (background processing, Frankfurt), Supabase (database and file
-  storage, Frankfurt), [email provider] for sign-in emails.
+  storage, Frankfurt), Twilio SendGrid (sign-in and account emails; [region: EU data residency, or
+  USA under the EU–US Data Privacy Framework / standard contractual clauses]).
 - **AI model provider**: to answer you, the paper text and your messages are sent to the AI model
   provider configured by the instructor ([Anthropic by default; inference in the US/global
   regions]). Your name, email address and IDs are never sent. Providers whose terms allow training
