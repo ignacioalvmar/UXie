@@ -22,6 +22,16 @@ describe("parseEnv (PRD §7)", () => {
     expect(env.LLM_PRICES_JSON.m?.out).toBe(10);
   });
 
+  it("FR-1.1 trims REGISTRATION_INVITE_CODE so a pasted newline cannot lock everyone out", () => {
+    expect(
+      parseEnv(BaseEnvSchema, { ...dev, REGISTRATION_INVITE_CODE: "VC_UXD_THI \n" })
+        .REGISTRATION_INVITE_CODE,
+    ).toBe("VC_UXD_THI");
+    expect(
+      parseEnv(BaseEnvSchema, { ...dev, REGISTRATION_INVITE_CODE: " \n" }).REGISTRATION_INVITE_CODE,
+    ).toBeUndefined();
+  });
+
   it("D11 TUTOR_MODES: Understand and Apply by default; P1 modes opt-in; understand required", () => {
     expect(parseEnv(BaseEnvSchema, dev).TUTOR_MODES).toEqual(["understand", "apply"]);
     expect(
