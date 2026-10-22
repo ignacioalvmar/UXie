@@ -47,7 +47,7 @@ export const BaseEnvSchema = z.object({
   NODE_ENV: withDefault(z.enum(["development", "test", "production"]), "development"),
   LOG_LEVEL: withDefault(z.enum(["trace", "debug", "info", "warn", "error", "fatal"]), "info"),
   ALLOWED_EMAIL_DOMAINS: withDefault(csv, ""),
-  REGISTRATION_INVITE_CODE: opt(z.string()),
+  REGISTRATION_INVITE_CODE: opt(z.string().trim()), // pasted values often carry a trailing newline
   PRIVACY_NOTICE_VERSION: withDefault(z.string(), "2026-10-01"),
   RESEARCH_CONSENT_VERSION: withDefault(z.string(), "2026-10-01"),
 

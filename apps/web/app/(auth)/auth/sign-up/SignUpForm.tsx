@@ -49,10 +49,12 @@ export function SignUpForm({
       />
       {inviteRequired && (
         <TextField
-          label="Course invite code (if your instructor gave you one)"
+          label="Course invite code"
           name="inviteCode"
           autoComplete="off"
+          hint="Required. Your instructor shares it with the course."
           error={copy?.invite}
+          required
         />
       )}
       <PrimaryButton pendingLabel="Creating account…">Create account</PrimaryButton>
