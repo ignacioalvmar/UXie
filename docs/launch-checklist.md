@@ -23,7 +23,7 @@ pnpm uxie doctor --ping        # one tiny request per configured provider/model
 | D12 | Launch date                     | First weeks of WS 26/27 after the pilot week              |                         |
 | D13 | Domain                          | `uxie.<owner's Namecheap domain>`, sender `auth@<domain>` |                         |
 | D14 | Plans                           | Vercel Pro, Render Starter, Supabase Pro                  |                         |
-| D15 | Transactional email             | Brevo or Resend (EU region)                               |                         |
+| D15 | Transactional email             | Twilio SendGrid over SMTP (ADR-030)                       |                         |
 | D17 | Providers enabled for the pilot | Anthropic only                                            |                         |
 
 ## §17.3 checklist
@@ -40,6 +40,10 @@ pnpm uxie doctor --ping        # one tiny request per configured provider/model
       regions in the privacy notice.
 - [ ] **Custom domain live** on Vercel (HTTPS); **SPF/DKIM/DMARC verified**; Supabase Site URL and
       redirect allow-list set to the production URL (runbook → Production setup, steps 3–5).
+- [ ] **SendGrid**: domain authenticated (green in Sender Authentication), click and open
+      tracking **off**, two restricted Mail-Send keys (Supabase Auth, app); Supabase Auth → Rate
+      limits → emails per hour raised for semester start ([deployment-guide.md](deployment-guide.md)
+      steps 2–3).
 - [ ] **Render worker healthy**: heartbeat green on `/admin/health`; docling deployed only if
       `EXTRACTOR=docling`.
 - [ ] **HTTPS, custom SMTP, verification and reset tested in production** (acceptance 1 below).

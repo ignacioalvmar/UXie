@@ -33,8 +33,9 @@ After editing the fixture paper, regenerate the seed: `pnpm --filter @uxie/db se
    (`pnpm uxie doctor` reports a mismatch).
 5. **Auth → URL configuration**: Site URL = `APP_URL`; redirect allow-list
    `APP_URL/auth/callback`.
-6. **Auth → SMTP**: custom EU-capable provider, sender `auth@<domain>` (D15, PRD §5). The built-in
-   mailer is not acceptable in production.
+6. **Auth → SMTP**: Twilio SendGrid (D15, ADR-030): host `smtp.sendgrid.net`, port 465, user
+   `apikey`, password = a restricted Mail-Send key, sender `auth@<domain>`. The built-in mailer is
+   not acceptable in production. Then raise Auth → Rate limits → emails per hour.
 7. **API keys**: copy the publishable and secret keys into Vercel (and Render for the worker).
    Generate `SETTINGS_ENCRYPTION_KEY` once (`openssl rand -base64 32`) and set it in Vercel and
    Render only. Losing it means re-entering provider keys on `/admin/settings/ai`.
@@ -132,6 +133,9 @@ kept, and store it per the privacy notice.
 
 ## Production setup (M10, PRD §17.1)
 
+The click-by-click version of this section, with SendGrid, is
+[deployment-guide.md](deployment-guide.md); this is the summary.
+
 Order matters: database first, then the worker, then the web app, then DNS and mail. Record the
 values (not the secrets) in the launch checklist. Dev and prod are separate Supabase projects
 (NFR-5); Vercel Preview uses dev, Production uses prod.
@@ -141,14 +145,15 @@ values (not the secrets) in the launch checklist. Dev and prod are separate Supa
    Apply migrations with the **DB migrate** GitHub Action (below), never `seed.sql`.
 2. **GitHub**: Settings → Environments → `dev` and `production` (production: required reviewer =
    the owner), each with `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`.
-3. **Email provider** (D15: Brevo, or Resend in the EU region): verify the domain; it shows the
-   SPF `TXT`, DKIM `TXT/CNAME` records. Create SMTP credentials for two senders:
-   `auth@<domain>` (Supabase Auth → SMTP) and the app sender `MAIL_FROM` (e.g.
-   `UXie <uxie@<domain>>`, `SMTP_URL=smtps://user:pass@host:465`).
+3. **Email provider** (D15: Twilio SendGrid, ADR-030): Sender Authentication → authenticate
+   `<domain>` (automated security on: three CNAMEs cover SPF and DKIM); Tracking → click and open
+   tracking **off**; two restricted API keys with Mail Send only: one for `auth@<domain>`
+   (Supabase Auth → SMTP), one for the app sender `MAIL_FROM` (e.g. `UXie <uxie@<domain>>`,
+   `SMTP_URL=smtps://apikey:<key>@smtp.sendgrid.net:465`).
 4. **Namecheap → Advanced DNS** for `<domain>`:
    - `CNAME uxie → <value Vercel shows>` (after step 6),
-   - the provider's SPF `TXT @` (merge with an existing SPF record: one `v=spf1` per name),
-   - the provider's DKIM records,
+   - SendGrid's three CNAMEs (`em…`, `s1._domainkey`, `s2._domainkey`; SPF is handled by the
+     `em…` CNAME, so no `TXT @` change is needed),
    - `TXT _dmarc → v=DMARC1; p=quarantine; rua=mailto:<owner>`,
    - optionally `CAA @ 0 issue "letsencrypt.org"` (Vercel's CA).
 5. **Supabase Auth (prod)**: Site URL `https://uxie.<domain>`; redirect allow-list
@@ -230,5 +235,6 @@ Keep the grace below Render's shutdown delay (30 s).
 - **Provider or model change**: re-run the eval (`pnpm uxie eval`, PRD §13) and add an ADR before
   switching production; list the provider in the privacy notice first.
 - **Each semester**: rotate the Anthropic key and the Supabase secret key (Vercel env + Render env
-  group only; redeploy both); export if permitted, then `pnpm uxie purge --before <date>`
+  group only; redeploy both) and the two SendGrid keys (Supabase Auth → SMTP; `SMTP_URL` in
+  Vercel); export if permitted, then `pnpm uxie purge --before <date>`
   (Retention above); rollback drill; update `RETENTION_REVIEW_DATE`.
