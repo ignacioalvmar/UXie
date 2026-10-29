@@ -14,7 +14,7 @@
     "@uxie/core": "workspace:*",
     "@uxie/llm": "workspace:*",
     "@uxie/tutor": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "yaml": "^2.9.1"
