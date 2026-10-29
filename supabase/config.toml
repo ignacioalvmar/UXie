@@ -42,9 +42,10 @@ enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 enable_signup = true
 enable_anonymous_sign_ins = false
-# FR-1.1: at least 10 characters.
+# FR-1.1: at least 10 characters with lower, upper, digit and symbol (matches the hosted projects;
+# PASSWORD_RULES in apps/web/lib/authRules.ts shows the same rules on the form).
 minimum_password_length = 10
-password_requirements = ""
+password_requirements = "lower_upper_letters_digits_symbols"
 
 [auth.rate_limit]
 email_sent = 30

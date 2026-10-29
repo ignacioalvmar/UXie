@@ -6,7 +6,7 @@ import { failureCopy } from "../../../../components/auth/copy";
 import {
   FormAlert,
   PasswordField,
-  PasswordLengthHint,
+  PasswordRulesHint,
   PrimaryButton,
   TextField,
 } from "../../../../components/auth/fields";
@@ -43,7 +43,7 @@ export function SignUpForm({
         autoComplete="new-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        hint={<PasswordLengthHint value={password} min={10} />}
+        hint={<PasswordRulesHint value={password} />}
         error={copy?.password}
         required
       />

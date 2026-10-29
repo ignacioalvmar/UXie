@@ -24,6 +24,16 @@ export function failureCopy(
       };
     case "password_short":
       return { password: "That password is too short. Use at least 10 characters." };
+    case "password_weak":
+      return {
+        password:
+          "Add an uppercase letter, a lowercase letter, a number and a special character (e.g. ! ? # $ %).",
+      };
+    case "email_send":
+      return {
+        title: "We couldn't send your confirmation email",
+        body: "Please try again in a few minutes. If it keeps happening, tell your instructor.",
+      };
     case "password_leaked":
       return {
         password: "This password has appeared in a data breach. Please choose a different one.",

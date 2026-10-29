@@ -243,11 +243,11 @@ describe("FR-1.1 sign-up domain hook", () => {
   it("rejects a non-university email and accepts an allowed one", async () => {
     const bad = await anon.auth.signUp({
       email: `x${Date.now()}@gmail.com`,
-      password: "long-enough-password",
+      password: "Long-enough-password1!",
     });
     expect(bad.error?.message).toMatch(/university email/i);
     const email = `rls${Date.now()}@thi.de`;
-    const good = await anon.auth.signUp({ email, password: "long-enough-password" });
+    const good = await anon.auth.signUp({ email, password: "Long-enough-password1!" });
     expect(good.error).toBeNull();
     const created = await service
       .from("profiles")

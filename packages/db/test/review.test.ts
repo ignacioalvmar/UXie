@@ -45,7 +45,8 @@ async function createStudent(key: "c" | "d" | "e", consent: boolean) {
   const email = `m9-${key}-${run}@thi.de`;
   const { data, error } = await db.auth.admin.createUser({
     email,
-    password: SEED_PASSWORD,
+    // Meets the local password policy (supabase/config.toml); seeded users are inserted via SQL.
+    password: "M9-student-password!",
     email_confirm: true,
   });
   if (error) throw error;

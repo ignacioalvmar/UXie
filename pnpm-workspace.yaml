@@ -7,3 +7,7 @@ allowBuilds:
   sharp: true
   supabase: true
   unrs-resolver: true
+
+# Patched transitive dependency (GHSA-9fm3-97px-rjf6 and related; pulled in by the AI SDK).
+overrides:
+  undici@7: ^7.30.1

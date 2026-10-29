@@ -26,7 +26,7 @@ After editing the fixture paper, regenerate the seed: `pnpm --filter @uxie/db se
 1. Create the project in region **Frankfurt (eu-central-1)**; one for dev, one for prod (NFR-5).
 2. Apply migrations: `pnpm exec supabase link --project-ref <ref>` then `pnpm exec supabase db push`.
    Never run `seed.sql` against production.
-3. **Auth → Providers → Email**: confirm email ON; minimum password length 10; leaked password
+3. **Auth → Providers → Email**: confirm email ON; minimum password length 10; password requirements "Lowercase, uppercase letters, digits and symbols" (shown on the form, `PASSWORD_RULES`); leaked password
    protection ON (FR-1.1, FR-1.2).
 4. **Auth → Hooks → Before user created**: Postgres function `public.hook_before_user_created`
    (FR-1.1). Check `public.auth_allowed_domains` matches `ALLOWED_EMAIL_DOMAINS`
