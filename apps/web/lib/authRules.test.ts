@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { classifyAuthError, isAllowedEmail, maskEmail, safeNext, SignUpSchema } from "./authRules";
+import {
+  classifyAuthError,
+  isAllowedEmail,
+  maskEmail,
+  passwordFailure,
+  safeNext,
+  SignUpSchema,
+} from "./authRules";
 
 describe("FR-1.1 email domain allow-list", () => {
   it("accepts listed domains case-insensitively and rejects others", () => {
@@ -47,10 +54,30 @@ describe("auth error mapping (HANDOFF §6.2)", () => {
       }),
     ).toBe("password_short");
     expect(
+      classifyAuthError({
+        code: "weak_password",
+        status: 422,
+        message:
+          "Password should contain at least one character of each: abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ, 0123456789, !@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~",
+      }),
+    ).toBe("password_weak");
+    expect(classifyAuthError({ status: 500, message: "Error sending confirmation email" })).toBe(
+      "email_send",
+    );
+    expect(
       classifyAuthError({ status: 403, message: "Only university email addresses can register." }),
     ).toBe("domain");
     expect(classifyAuthError({ code: "same_password", status: 422 })).toBe("password_same");
     expect(classifyAuthError({ status: 500 })).toBe("network");
+  });
+
+  it("checks the hosted password policy (length, lower, upper, digit, symbol)", () => {
+    expect(passwordFailure("Short1!")).toBe("password_short");
+    expect(passwordFailure("longpassword")).toBe("password_weak");
+    expect(passwordFailure("LongPassword12")).toBe("password_weak");
+    expect(passwordFailure("LongPassword12€")).toBe("password_weak");
+    expect(passwordFailure("e2e-Password-2026!")).toBeNull();
+    expect(passwordFailure("Tutor.Strong9")).toBeNull();
   });
 
   it("masks emails for display", () => {

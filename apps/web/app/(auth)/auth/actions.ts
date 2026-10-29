@@ -7,7 +7,7 @@ import {
   classifyAuthError,
   EmailSchema,
   isAllowedEmail,
-  MIN_PASSWORD,
+  passwordFailure,
   safeNext,
   SignInSchema,
   SignUpSchema,
@@ -66,7 +66,8 @@ export async function signUp(_prev: AuthFormState, form: FormData): Promise<Auth
   const env = serverEnv();
   if (!isAllowedEmail(parsed.data.email, env.ALLOWED_EMAIL_DOMAINS))
     return { failure: "domain", email };
-  if (parsed.data.password.length < MIN_PASSWORD) return { failure: "password_short", email };
+  const weak = passwordFailure(parsed.data.password);
+  if (weak) return { failure: weak, email };
   if (env.REGISTRATION_INVITE_CODE && parsed.data.inviteCode !== env.REGISTRATION_INVITE_CODE)
     return { failure: "invite", email };
 
@@ -78,14 +79,23 @@ export async function signUp(_prev: AuthFormState, form: FormData): Promise<Auth
   });
   if (error) {
     const failure = classifyAuthError(error);
+    if (failure === "network" || failure === "email_send")
+      // Unexpected Supabase errors otherwise vanish behind the generic banner (no address logged).
+      console.error("sign-up failed", {
+        status: error.status,
+        code: error.code,
+        message: error.message,
+      });
     if (
       failure === "password_short" ||
+      failure === "password_weak" ||
       failure === "password_leaked" ||
       failure === "rate_limited" ||
-      failure === "domain"
+      failure === "domain" ||
+      failure === "email_send" ||
+      failure === "network"
     )
       return { failure, email };
-    if (failure === "network") return { failure, email };
   }
   if (data?.user && !data.user.identities?.length) {
     // Existing account: Supabase returns an obfuscated user; behave exactly as for a new one.
@@ -132,7 +142,8 @@ export async function requestReset(_prev: AuthFormState, form: FormData): Promis
 export async function updatePassword(_prev: AuthFormState, form: FormData): Promise<AuthFormState> {
   const password = String(form.get("password") ?? "");
   const confirm = String(form.get("confirm") ?? "");
-  if (password.length < MIN_PASSWORD) return { failure: "password_short" };
+  const weak = passwordFailure(password);
+  if (weak) return { failure: weak };
   if (password !== confirm) return { failure: "credentials" };
   const supabase = await userClient();
   const { data } = await supabase.auth.getUser();
@@ -142,7 +153,10 @@ export async function updatePassword(_prev: AuthFormState, form: FormData): Prom
     const failure = classifyAuthError(error);
     return {
       failure:
-        failure === "password_leaked" || failure === "password_same" || failure === "password_short"
+        failure === "password_leaked" ||
+        failure === "password_same" ||
+        failure === "password_short" ||
+        failure === "password_weak"
           ? failure
           : "network",
     };

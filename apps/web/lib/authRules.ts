@@ -4,6 +4,33 @@ import { z } from "zod";
 
 export const MIN_PASSWORD = 10;
 
+/** Supabase's symbol set for `password_requirements = "lower_upper_letters_digits_symbols"`. */
+const PASSWORD_SYMBOLS = "!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~";
+
+/** Mirrors the hosted Supabase Auth policy, so the form shows every rule the server enforces. */
+export const PASSWORD_RULES = [
+  {
+    id: "length",
+    label: `At least ${MIN_PASSWORD} characters`,
+    test: (p: string) => p.length >= MIN_PASSWORD,
+  },
+  { id: "lower", label: "A lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+  { id: "upper", label: "An uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { id: "digit", label: "A number", test: (p: string) => /[0-9]/.test(p) },
+  {
+    id: "symbol",
+    label: "A special character, e.g. ! ? # $ %",
+    test: (p: string) => [...p].some((c) => PASSWORD_SYMBOLS.includes(c)),
+  },
+] as const;
+
+/** The first unmet rule, mapped to a failure: length first, then character classes. */
+export function passwordFailure(password: string): "password_short" | "password_weak" | null {
+  const unmet = PASSWORD_RULES.find((r) => !r.test(password));
+  if (!unmet) return null;
+  return unmet.id === "length" ? "password_short" : "password_weak";
+}
+
 export function emailDomain(email: string): string {
   return email.trim().toLowerCase().split("@")[1] ?? "";
 }
@@ -49,9 +76,11 @@ export type AuthFailure =
   | "rate_limited"
   | "network"
   | "password_short"
+  | "password_weak"
   | "password_leaked"
   | "password_same"
-  | "invite";
+  | "invite"
+  | "email_send";
 
 /** Map a Supabase Auth error to a UI condition. Never reveals which credential was wrong. */
 export function classifyAuthError(err: {
@@ -65,10 +94,13 @@ export function classifyAuthError(err: {
     return "rate_limited";
   if (code === "email_not_confirmed") return "unverified";
   if (code === "same_password") return "password_same";
-  if (code === "weak_password")
-    return msg.includes("pwned") || msg.includes("breach") || msg.includes("leaked")
-      ? "password_leaked"
-      : "password_short";
+  if (code === "weak_password") {
+    if (msg.includes("pwned") || msg.includes("breach") || msg.includes("leaked"))
+      return "password_leaked";
+    return msg.includes("at least one character") ? "password_weak" : "password_short";
+  }
+  // Supabase rolls the sign-up back when its mailer (SMTP) fails.
+  if (msg.includes("sending") && msg.includes("email")) return "email_send";
   if (msg.includes("university email") || err.status === 403) return "domain";
   if (code === "invalid_credentials" || err.status === 400) return "credentials";
   return "network";

@@ -163,11 +163,11 @@ In the error state the primary button reads "Try again". Keep the typed email; c
 - Back button (44 x 44, `aria-label` "Back to sign in") + wordmark.
 - `h1`: "Create your account"; subtitle: "For students enrolled in the course."
 - "University email" (`autocomplete=email`), hint "Only university addresses can register."
-- "Create a password" (`autocomplete=new-password`), hint row with a status icon + "At least 10 characters". The icon changes from empty circle to check circle when met (icon + text, never color alone). Add the show/hide toggle here too.
+- "Create a password" (`autocomplete=new-password`), hint rows with a status icon each: "At least 10 characters", "A lowercase letter", "An uppercase letter", "A number", "A special character, e.g. ! ? # $ %" (Supabase `lower_upper_letters_digits_symbols`). Each icon changes from empty circle to check circle when met (icon + text, never color alone). Add the show/hide toggle here too.
 - "Course invite code (if your instructor gave you one)": render only when `REGISTRATION_INVITE_CODE` is configured.
 - Button: "Create account".
 - Next-step chip (bg `panel`, radius `chip`): mini trio at 44 px + "Next: confirm your email, then choose your UXie."
-- Errors: domain (same copy as 6.2), "That password is too short. Use at least 10 characters.", leaked password (Supabase): "This password has appeared in a data breach. Please choose a different one.", invite code: "That invite code doesn't match. Check with your instructor.", email already registered: do not reveal; proceed to the verify screen exactly as for a new account.
+- Errors: domain (same copy as 6.2), "That password is too short. Use at least 10 characters.", missing character class: "Add an uppercase letter, a lowercase letter, a number and a special character (e.g. ! ? # $ %).", confirmation email not sent (SMTP failure): "We couldn't send your confirmation email", leaked password (Supabase): "This password has appeared in a data breach. Please choose a different one.", invite code: "That invite code doesn't match. Check with your instructor.", email already registered: do not reveal; proceed to the verify screen exactly as for a new account.
 
 ### 6.4 Check your inbox (`/auth/verify`)
 
