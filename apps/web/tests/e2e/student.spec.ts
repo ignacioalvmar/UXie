@@ -43,8 +43,26 @@ test("FR-1.1/1.2 register and verify the email", async ({ baseURL }) => {
   await expectAccessible(page, "/auth/verify");
 
   const link = await latestLink(email, /confirm/i);
-  await page.goto(await appUrlFromEmailLink(link, baseURL!));
+  const confirmUrl = await appUrlFromEmailLink(link, baseURL!);
+  // A mail link scanner opens the link first (HEAD + GET); that must not spend the token (ADR-031).
+  await fetch(confirmUrl, { method: "HEAD" });
+  expect((await fetch(confirmUrl)).status).toBe(200);
+
+  await page.goto(confirmUrl);
+  await expectAccessible(page, "/auth/confirm");
+  await page.getByRole("button", { name: "Confirm my email" }).click();
   await page.waitForURL(/\/onboarding/);
+});
+
+test("FR-1.2 an expired link offers sign-in and a new link", async ({ browser, baseURL }) => {
+  const other = await (await browser.newContext({ baseURL })).newPage();
+  await other.goto("/auth/confirm?token_hash=spent&type=email");
+  await other.getByRole("button", { name: "Confirm my email" }).click();
+  await other.waitForURL(/\/auth\/verify\?expired=1/);
+  await expect(other.getByRole("link", { name: "Try signing in" })).toBeVisible();
+  await expect(other.getByLabel("University email")).toBeVisible();
+  await expectAccessible(other, "/auth/verify?expired=1");
+  await other.context().close();
 });
 
 test("FR-1.3 onboarding: privacy notice, character, consent", async () => {

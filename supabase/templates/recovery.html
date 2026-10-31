@@ -1,0 +1,10 @@
+<!-- ADR-031: same scanner-safe landing page as confirmation.html. Hosted projects: Auth → Emails →
+     Reset password; docs/runbook.md. -->
+<h2>Reset your UXie password</h2>
+<p>Someone asked to reset the password for this account.</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery"
+    >Choose a new password</a
+  >
+</p>
+<p>The link works once and expires in an hour. If it wasn't you, ignore this email.</p>

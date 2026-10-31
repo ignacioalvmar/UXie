@@ -62,6 +62,16 @@ max_frequency = "1s"
 otp_length = 6
 otp_expiry = 3600
 
+# ADR-031: email links open /auth/confirm, which spends the token only on a button click (mail
+# link scanners). The hosted projects need the same templates (docs/runbook.md).
+[auth.email.template.confirmation]
+subject = "Confirm your UXie email"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your UXie password"
+content_path = "./supabase/templates/recovery.html"
+
 # FR-1.1: domain allow-list, second line of defence after the server action (0004_auth_hook.sql).
 [auth.hook.before_user_created]
 enabled = true

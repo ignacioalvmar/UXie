@@ -1,0 +1,11 @@
+<!-- ADR-031: links to the app's /auth/confirm page, which spends the token only on a button click,
+     so mail link scanners cannot use it up. Paste the same body into the hosted projects
+     (Auth → Emails → Confirm signup); docs/runbook.md. -->
+<h2>Welcome to UXie</h2>
+<p>Confirm your university email to finish setting up your account.</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/onboarding"
+    >Confirm my email</a
+  >
+</p>
+<p>The link works once and expires in an hour. If you didn't sign up for UXie, ignore this email.</p>

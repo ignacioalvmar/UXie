@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { needsOnboarding } from "@uxie/db";
 import { accounts } from "../../../lib/auth";
 import {
@@ -105,6 +106,30 @@ export async function signUp(_prev: AuthFormState, form: FormData): Promise<Auth
       .catch(() => {});
   }
   redirect(`/auth/verify?email=${encodeURIComponent(parsed.data.email)}`);
+}
+
+const ConfirmLinkSchema = z.object({
+  token_hash: z.string().min(1).max(500),
+  type: z.enum(["email", "recovery"]),
+  next: z.string().optional(),
+});
+
+/** POST from /auth/confirm (ADR-031): spends the email's one-time token, then continues. */
+export async function confirmEmailLink(form: FormData) {
+  const parsed = ConfirmLinkSchema.safeParse({
+    token_hash: form.get("token_hash"),
+    type: form.get("type"),
+    next: form.get("next") ?? undefined,
+  });
+  const recovery = form.get("type") === "recovery";
+  if (!parsed.success) redirect(recovery ? "/auth/reset?expired=1" : "/auth/verify?expired=1");
+  const supabase = await userClient();
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: parsed.data.token_hash,
+    type: parsed.data.type,
+  });
+  if (error) redirect(recovery ? "/auth/reset?expired=1" : "/auth/verify?expired=1");
+  redirect(recovery ? "/auth/reset/update" : safeNext(parsed.data.next, "/onboarding"));
 }
 
 /** HANDOFF §6.4 "Resend email". */
