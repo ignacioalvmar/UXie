@@ -87,6 +87,7 @@ export function classifyAuthError(err: {
   code?: string;
   status?: number;
   message?: string;
+  reasons?: string[];
 }): AuthFailure {
   const code = err.code ?? "";
   const msg = (err.message ?? "").toLowerCase();
@@ -95,9 +96,15 @@ export function classifyAuthError(err: {
   if (code === "email_not_confirmed") return "unverified";
   if (code === "same_password") return "password_same";
   if (code === "weak_password") {
-    if (msg.includes("pwned") || msg.includes("breach") || msg.includes("leaked"))
+    // Leaked-password protection says "known to be weak and easy to guess" (reason "pwned").
+    if (
+      err.reasons?.includes("pwned") ||
+      ["pwned", "breach", "leaked", "easy to guess"].some((s) => msg.includes(s))
+    )
       return "password_leaked";
-    return msg.includes("at least one character") ? "password_weak" : "password_short";
+    if (err.reasons?.includes("characters") || msg.includes("at least one character"))
+      return "password_weak";
+    return "password_short";
   }
   // Supabase rolls the sign-up back when its mailer (SMTP) fails.
   if (msg.includes("sending") && msg.includes("email")) return "email_send";

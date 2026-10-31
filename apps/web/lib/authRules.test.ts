@@ -47,6 +47,17 @@ describe("auth error mapping (HANDOFF §6.2)", () => {
         message: "Password is known to be weak and easy to guess (pwned)",
       }),
     ).toBe("password_leaked");
+    // Verbatim message from production auth logs (2026-10-30).
+    expect(
+      classifyAuthError({
+        code: "weak_password",
+        status: 422,
+        message: "Password is known to be weak and easy to guess, please choose a different one.",
+      }),
+    ).toBe("password_leaked");
+    expect(
+      classifyAuthError({ code: "weak_password", status: 422, reasons: ["pwned"] }),
+    ).toBe("password_leaked");
     expect(
       classifyAuthError({
         code: "weak_password",
