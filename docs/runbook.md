@@ -33,6 +33,10 @@ After editing the fixture paper, regenerate the seed: `pnpm --filter @uxie/db se
    (`pnpm uxie doctor` reports a mismatch).
 5. **Auth → URL configuration**: Site URL = `APP_URL`; redirect allow-list
    `APP_URL/auth/callback`.
+   **Auth → Emails**: paste `supabase/templates/confirmation.html` into "Confirm signup" (subject
+   "Confirm your UXie email") and `supabase/templates/recovery.html` into "Reset password" (subject
+   "Reset your UXie password"). They link to `/auth/confirm`, which spends the token only on a
+   button click, so university mail scanners cannot use the link up (ADR-031).
 6. **Auth → SMTP**: Twilio SendGrid (D15, ADR-030): host `smtp.sendgrid.net`, port 465, user
    `apikey`, password = a restricted Mail-Send key, sender `auth@<domain>`. The built-in mailer is
    not acceptable in production. Then raise Auth → Rate limits → emails per hour.
@@ -158,7 +162,8 @@ values (not the secrets) in the launch checklist. Dev and prod are separate Supa
    - optionally `CAA @ 0 issue "letsencrypt.org"` (Vercel's CA).
 5. **Supabase Auth (prod)**: Site URL `https://uxie.<domain>`; redirect allow-list
    `https://uxie.<domain>/auth/callback` only (preview wildcards belong on the dev project);
-   custom SMTP from step 3 with sender `auth@<domain>`; email templates branded "UXie";
+   custom SMTP from step 3 with sender `auth@<domain>`; email templates from `supabase/templates`
+   (project setup step 5, ADR-031);
    leaked-password protection on; the before-user-created hook (step 4 of the project setup).
 6. **Render**: New → Blueprint → this repo; `render.yaml` creates `uxie-worker` (Frankfurt) and the
    `uxie-prod` env group. Enter the secrets (`LLM_API_KEY`, Supabase URL/keys,

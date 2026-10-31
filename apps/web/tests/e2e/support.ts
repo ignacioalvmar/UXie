@@ -76,13 +76,16 @@ export async function latestLink(to: string, subject: RegExp): Promise<string> {
 }
 
 /**
- * Follows a Supabase email link and returns the app URL it redirects to, re-based on the suite's
- * base URL: the local stack's redirect allow-list may only name port 3000 (cookies ignore ports).
+ * The app URL of an email link, re-based on the suite's base URL: the templates link to the Site URL
+ * (port 3000) and cookies ignore ports. Links to Supabase's /verify are followed to their redirect.
  */
 export async function appUrlFromEmailLink(link: string, baseURL: string): Promise<string> {
-  const res = await fetch(link, { redirect: "manual" });
-  const location = res.headers.get("location");
-  if (!location) throw new Error(`no redirect from the email link (${res.status})`);
+  let location: string | null = link;
+  if (!new URL(link).pathname.startsWith("/auth/")) {
+    const res = await fetch(link, { redirect: "manual" });
+    location = res.headers.get("location");
+    if (!location) throw new Error(`no redirect from the email link (${res.status})`);
+  }
   const target = new URL(location);
   const base = new URL(baseURL);
   target.protocol = base.protocol;
